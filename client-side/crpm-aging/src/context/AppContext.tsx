@@ -37,6 +37,32 @@ interface AppContextProps {
     accDefinition: string;
     setAccDefinition: (value: string) => void;
     accDefinitionOptions: FilterOptions[];
+    
+    governmentType: string;
+    setGovernmentType: (value: string) => void;
+    governmentTypeOptions: FilterOptions[];
+    
+    mitFilter: string;
+    setMitFilter: (value: string) => void;
+    mitFilterOptions: FilterOptions[];
+    
+    monthsOutstandingBracket: string;
+    setMonthsOutstandingBracket: (value: string) => void;
+    monthsOutstandingBracketOptions: FilterOptions[];
+    
+    // New debt range filter
+    debtRange: string;
+    setDebtRange: (value: string) => void;
+    debtRangeOptions: FilterOptions[];
+    
+    // New SMER segment filter
+    smerSegment: string;
+    setSmerSegment: (value: string) => void;
+    smerSegmentOptions: FilterOptions[];
+    
+    // Centralized view type
+    viewType: 'tradeReceivable' | 'agedDebt';
+    setViewType: (value: 'tradeReceivable' | 'agedDebt') => void;
   };
   
   // Actions
@@ -61,6 +87,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [netPositiveBalance, setNetPositiveBalance] = useState<string>('all');
   const [accClass, setAccClass] = useState<string>('all');
   const [accDefinition, setAccDefinition] = useState<string>('all');
+  const [governmentType, setGovernmentType] = useState<string>('all');
+  const [mitFilter, setMitFilter] = useState<string>('all');
+  const [monthsOutstandingBracket, setMonthsOutstandingBracket] = useState<string>('all');
+  // Add new filters
+  const [debtRange, setDebtRange] = useState<string>('all');
+  const [smerSegment, setSmerSegment] = useState<string>('all');
+  const [viewType, setViewType] = useState<'tradeReceivable' | 'agedDebt'>('agedDebt');
   
   // Filter options
   const businessAreaOptions: FilterOptions[] = [
@@ -103,13 +136,61 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   ];
   
   const accDefinitionOptions: FilterOptions[] = [
-    { value: 'all', label: 'All Definitions' },
+    { value: 'all', label: 'All' },
     { value: 'AG', label: 'AG' },
     { value: 'CM', label: 'CM' },
     { value: 'DM', label: 'DM' },
     { value: 'IN', label: 'IN' },
     { value: 'SL', label: 'SL' },
     { value: 'MN', label: 'MN' },
+  ];
+  
+  const governmentTypeOptions: FilterOptions[] = [
+    { value: 'all', label: 'All Types' },
+    { value: 'government', label: 'Government' },
+    { value: 'non-government', label: 'Non-Government' },
+  ];
+  
+  const mitFilterOptions: FilterOptions[] = [
+    { value: 'all', label: 'All' },
+    { value: 'mit', label: 'MIT' },
+    { value: 'non-mit', label: 'Non-MIT' },
+  ];
+  
+  const monthsOutstandingBracketOptions: FilterOptions[] = [
+    { value: 'all', label: 'All Ranges' },
+    { value: '0-3', label: '0-3 Months' },
+    { value: '3-6', label: '3-6 Months' },
+    { value: '6-9', label: '6-9 Months' },
+    { value: '9-12', label: '9-12 Months' },
+    { value: '>12', label: '>12 Months' },
+  ];
+  
+  // Add new filter options
+  const debtRangeOptions: FilterOptions[] = [
+    { value: 'all', label: 'All Debt Ranges' },
+    { value: '0.01-200', label: 'RM0.01 - RM200' },
+    { value: '201-500', label: 'RM201 - RM500' },
+    { value: '501-1000', label: 'RM501 - RM1,000' },
+    { value: '1001-3000', label: 'RM1,001 - RM3,000' },
+    { value: '3001-5000', label: 'RM3,001 - RM5,000' },
+    { value: '5001-10000', label: 'RM5,001 - RM10,000' },
+    { value: '10001-30000', label: 'RM10,001 - RM30,000' },
+    { value: '30001-50000', label: 'RM30,001 - RM50,000' },
+    { value: '50001-100000', label: 'RM50,001 - RM100,000' },
+    { value: '100001+', label: 'RM100,000+' },
+  ];
+  
+  const smerSegmentOptions: FilterOptions[] = [
+    { value: 'all', label: 'All Segments' },
+    { value: 'EMRB', label: 'EMRB' },
+    { value: 'GNLA', label: 'GNLA' },
+    { value: 'HRES', label: 'HRES' },
+    { value: 'MASR', label: 'MASR' },
+    { value: 'MEDB', label: 'MEDB' },
+    { value: 'MICB', label: 'MICB' },
+    { value: 'SMLB', label: 'SMLB' },
+    { value: 'BLANK', label: 'BLANKS' },
   ];
   
   // Load data when component mounts or when filters change
@@ -122,7 +203,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           accStatus,
           netPositiveBalance,
           accClass,
-          accDefinition
+          accDefinition,
+          monthsOutstandingBracket,
+          debtRange, // Add new filter
+          smerSegment, // Add new filter
         });
         
         setSummaryData(data.summary);
@@ -135,7 +219,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
     
     loadData();
-  }, [businessArea, accStatus, netPositiveBalance, accClass, accDefinition]);
+  }, [
+    businessArea, accStatus, netPositiveBalance, accClass, 
+    accDefinition, governmentType, mitFilter, monthsOutstandingBracket,
+    debtRange, smerSegment // Add new dependencies
+  ]);
   
   // Refresh data function
   const refreshData = async () => {
@@ -146,7 +234,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         accStatus,
         netPositiveBalance,
         accClass,
-        accDefinition
+        accDefinition,
+        monthsOutstandingBracket,
+        debtRange, // Add new filter
+        smerSegment, // Add new filter
       });
       
       setSummaryData(data.summary);
@@ -191,6 +282,31 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       accDefinition,
       setAccDefinition,
       accDefinitionOptions,
+      
+      governmentType,
+      setGovernmentType,
+      governmentTypeOptions,
+      
+      mitFilter,
+      setMitFilter,
+      mitFilterOptions,
+      
+      monthsOutstandingBracket,
+      setMonthsOutstandingBracket,
+      monthsOutstandingBracketOptions,
+      
+      // Add new filters
+      debtRange,
+      setDebtRange,
+      debtRangeOptions,
+      
+      smerSegment,
+      setSmerSegment,
+      smerSegmentOptions,
+      
+      // Centralized view type
+      viewType,
+      setViewType,
     },
     
     // Actions

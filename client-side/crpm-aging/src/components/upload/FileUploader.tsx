@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Loader from '../ui/Loader';
 
@@ -44,8 +43,8 @@ const FileUploader: React.FC<FileUploaderProps> = ({
 
   const handleFile = (file: File) => {
     // Check if file is an Excel file
-    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
-      alert('Please upload an Excel file');
+    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls') && !file.name.endsWith('.csv')) {
+      alert('Please upload an Excel or CSV file');
       return;
     }
     
@@ -53,39 +52,76 @@ const FileUploader: React.FC<FileUploaderProps> = ({
   };
 
   return (
-    <div 
-      className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors 
-        ${isUploading ? 'bg-gray-50 border-gray-300' : isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:bg-gray-50'} 
-        ${isUploading ? 'cursor-not-allowed' : 'cursor-pointer'} relative`}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-    >
-      {isUploading ? (
-        <div className="flex flex-col items-center">
-          <Loader size="md" color="blue" className="mb-4" />
-          <p className="text-gray-600">Uploading file...</p>
-        </div>
-      ) : (
-        <>
-          <input
-            type="file"
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            onChange={handleFileChange}
-            accept={accept}
-            disabled={isUploading}
-          />
-          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-          </svg>
-          <p className="mt-2 text-sm text-gray-600">
-            Drag and drop your Excel file here, or <span className="text-blue-500">browse</span>
-          </p>
-          <p className="mt-1 text-xs text-gray-500">
-            Supported formats: .xlsx, .xls
-          </p>
-        </>
-      )}
+    <div className="relative">
+      <input
+        type="file"
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+        onChange={handleFileChange}
+        accept={accept}
+        disabled={isUploading}
+      />
+      
+      <div 
+        className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300 relative
+          ${isUploading 
+            ? 'bg-gray-50 border-gray-300 cursor-not-allowed' 
+            : isDragging 
+              ? 'border-blue-400 bg-blue-50/70 transform scale-105' 
+              : 'border-blue-200 bg-blue-50/50 hover:border-blue-400 hover:bg-blue-50/70 cursor-pointer'
+          }`}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        {isUploading ? (
+          <div className="flex flex-col items-center space-y-4">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full">
+              <Loader size="md" color="white" className="" />
+            </div>
+            <div>
+              <p className="text-lg font-medium text-gray-700 mb-1">Uploading file...</p>
+              <p className="text-sm text-gray-500">Please wait while we process your file</p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex justify-center">
+              <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full transition-all duration-300
+                ${isDragging 
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-700 transform scale-110' 
+                  : 'bg-gradient-to-r from-blue-500 to-indigo-600'
+                }`}>
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+            </div>
+            
+            <div>
+              <p className="text-lg font-medium text-gray-700 mb-1">
+                {isDragging ? 'Drop your file here' : 'Drag & drop your file here'}
+              </p>
+              <p className="text-sm text-gray-500">
+                or <span className="text-blue-500 font-medium hover:text-blue-600">click to browse files</span>
+              </p>
+            </div>
+            
+            <div className="flex items-center justify-center space-x-2 text-xs text-gray-400">
+              <span>Supported formats:</span>
+              <span className="px-2 py-1 bg-green-100 text-green-700 rounded font-medium">Excel</span>
+              <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded font-medium">CSV</span>
+            </div>
+            
+            {isDragging && (
+              <div className="absolute inset-0 bg-blue-500/10 rounded-xl border-2 border-blue-500 flex items-center justify-center">
+                <div className="text-blue-600 font-semibold text-lg">
+                  Release to upload
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

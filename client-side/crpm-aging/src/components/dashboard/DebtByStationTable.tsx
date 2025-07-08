@@ -8,12 +8,19 @@ interface DebtByStationData {
   station: string;
   numOfAccounts: number;
   debtAmount: number;
+  // Additional fields for Trade Receivable view
+  totalUndue?: number;
+  curMthUnpaid?: number;
+  ttlOsAmt?: number;
+  totalUnpaid?: number;
 }
 
 interface DebtByStationTableProps {
   data: DebtByStationData[];
   loading?: boolean;
   title?: string;
+  viewType: 'tradeReceivable' | 'agedDebt';
+  onViewTypeChange: (viewType: 'tradeReceivable' | 'agedDebt') => void;
   filters?: {
     businessArea: string;
     onBusinessAreaChange: (value: string) => void;
@@ -24,33 +31,148 @@ interface DebtByStationTableProps {
 const DebtByStationTable: React.FC<DebtByStationTableProps> = ({
   data,
   loading = false,
-  title = 'Debt By Station',
+  title = 'Summary Aged Debt by Station',
+  viewType,
   filters
 }) => {
-  const columns = [
-    { header: 'Business Area', accessor: 'businessArea' },
-    { header: 'Station', accessor: 'station' },
+  const baseColumns = [
+    { 
+      header: 'Business Area', 
+      accessor: 'businessArea',
+      align: 'left' as const,
+      cell: (value: string) => (
+        <span className={`font-medium ${value === 'TOTAL' ? 'text-blue-600 font-bold' : 'text-gray-900'}`}>
+          {value}
+        </span>
+      )
+    },
+    { 
+      header: 'Station', 
+      accessor: 'station',
+      align: 'left' as const,
+      cell: (value: string, row: any) => (
+        <span className={`font-medium ${row.businessArea === 'TOTAL' ? 'text-blue-600 font-bold' : 'text-gray-700'}`}>
+          {value}
+        </span>
+      )
+    },
     { 
       header: 'Number of Accounts', 
       accessor: 'numOfAccounts',
-      cell: (value: number) => <span className="font-medium">{value.toLocaleString()}</span>
-    },
-    { 
-      header: 'Debt (RM)', 
-      accessor: 'debtAmount',
-      cell: (value: number) => <span className="font-medium text-gray-900">RM {value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+      align: 'right' as const,
+      cell: (value: number, row: any) => (
+        <span className={`font-medium ${row.businessArea === 'TOTAL' ? 'text-blue-600 font-bold text-lg' : ''}`}>
+          {value.toLocaleString()}
+        </span>
+      )
     }
   ];
 
-  const headerRight = filters && (
-    <div className="flex">
-      <Dropdown
-        options={filters.businessAreaOptions}
-        value={filters.businessArea}
-        onChange={filters.onBusinessAreaChange}
-        placeholder="All Business Areas"
-        className="w-48"
-      />
+  // Additional columns for Trade Receivable view - with totals row styling
+  const tradeReceivableColumns = [
+    { 
+      header: 'Total Undue', 
+      accessor: 'totalUndue',
+      align: 'right' as const,
+      cell: (value: number, row: any) => (
+        <span className={`font-medium ${row.businessArea === 'TOTAL' ? 'text-blue-600 font-bold text-lg' : 'text-blue-600'}`}>
+          RM {value?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+        </span>
+      )
+    },
+    { 
+      header: 'Cur.Mth Unpaid', 
+      accessor: 'curMthUnpaid',
+      align: 'right' as const,
+      cell: (value: number, row: any) => (
+        <span className={`font-medium ${row.businessArea === 'TOTAL' ? 'text-blue-600 font-bold text-lg' : 'text-orange-600'}`}>
+          RM {value?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+        </span>
+      )
+    },
+    { 
+      header: 'TTL O/S Amt', 
+      accessor: 'ttlOsAmt',
+      align: 'right' as const,
+      cell: (value: number, row: any) => (
+        <span className={`${row.businessArea === 'TOTAL' ? 'font-bold text-blue-600 text-lg' : 'font-bold text-red-600'}`}>
+          RM {value?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+        </span>
+      )
+    },
+    { 
+      header: 'Total Unpaid', 
+      accessor: 'totalUnpaid',
+      align: 'right' as const,
+      cell: (value: number, row: any) => (
+        <span className={`${row.businessArea === 'TOTAL' ? 'font-bold text-blue-600 text-lg' : 'font-bold text-gray-900'}`}>
+          RM {value?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+        </span>
+      )
+    }
+  ];
+
+  // Aged Debt view columns - with totals row styling
+  const agedDebtColumns = [
+    { 
+      header: 'TTL O/S Amt', 
+      accessor: 'debtAmount',
+      align: 'right' as const,
+      cell: (value: number, row: any) => (
+        <span className={`${row.businessArea === 'TOTAL' ? 'font-bold text-blue-600 text-lg' : 'font-bold text-gray-900'}`}>
+          RM {value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </span>
+      )
+    }
+  ];
+
+  // Combine columns based on view type
+  const columns = viewType === 'tradeReceivable' 
+    ? [...baseColumns, ...tradeReceivableColumns]
+    : [...baseColumns, ...agedDebtColumns];
+
+  // Calculate totals based on view type
+  const calculateTotals = () => {
+    const totals = {
+      numOfAccounts: data.reduce((sum, item) => sum + item.numOfAccounts, 0),
+      totalUndue: data.reduce((sum, item) => sum + (item.totalUndue || 0), 0),
+      curMthUnpaid: data.reduce((sum, item) => sum + (item.curMthUnpaid || 0), 0),
+      ttlOsAmt: data.reduce((sum, item) => sum + (item.ttlOsAmt || 0), 0),
+      totalUnpaid: data.reduce((sum, item) => sum + (item.totalUnpaid || 0), 0),
+      debtAmount: data.reduce((sum, item) => sum + item.debtAmount, 0)
+    };
+    return totals;
+  };
+
+  const totals = calculateTotals();
+
+  // Create totals row data
+  const totalsRowData = {
+    businessArea: 'TOTAL',
+    station: '',
+    numOfAccounts: totals.numOfAccounts,
+    totalUndue: totals.totalUndue,
+    curMthUnpaid: totals.curMthUnpaid,
+    ttlOsAmt: totals.ttlOsAmt,
+    totalUnpaid: totals.totalUnpaid,
+    debtAmount: totals.debtAmount
+  };
+
+  // Combine data with totals row
+  const dataWithTotals = [...data, totalsRowData];
+
+  const headerRight = (
+    <div className="flex items-center gap-4">
+      {/* Business Area Filter - remove view type toggle buttons as they're now in FilterSection */}
+      {filters && (
+        <Dropdown
+          options={filters.businessAreaOptions}
+          value={filters.businessArea}
+          onChange={filters.onBusinessAreaChange}
+          placeholder="All Business Areas"
+          className="w-64"
+        />
+      )}
     </div>
   );
 
@@ -58,7 +180,7 @@ const DebtByStationTable: React.FC<DebtByStationTableProps> = ({
     <Card title={title} headerRight={headerRight}>
       <Table 
         columns={columns} 
-        data={data} 
+        data={dataWithTotals} 
         loading={loading}
         emptyMessage="No debt data available"
       />

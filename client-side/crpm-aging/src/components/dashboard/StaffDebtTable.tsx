@@ -1,7 +1,6 @@
 import React from 'react';
 import Card from '../ui/Card';
 import Table from '../ui/Table';
-import Dropdown from '../ui/Dropdown';
 
 interface StaffDebtData {
   businessArea: string;
@@ -13,17 +12,11 @@ interface StaffDebtData {
 interface StaffDebtTableProps {
   data: StaffDebtData[];
   loading?: boolean;
-  filters: {
-    accStatus: string;
-    onAccStatusChange: (value: string) => void;
-    accStatusOptions: { value: string; label: string }[];
-  };
 }
 
 const StaffDebtTable: React.FC<StaffDebtTableProps> = ({
   data,
-  loading = false,
-  filters
+  loading = false
 }) => {
   const columns = [
     { header: 'Business Area', accessor: 'businessArea' },
@@ -40,17 +33,7 @@ const StaffDebtTable: React.FC<StaffDebtTableProps> = ({
     }
   ];
 
-  const headerRight = (
-    <div className="flex">
-      <Dropdown
-        options={filters.accStatusOptions}
-        value={filters.accStatus}
-        onChange={filters.onAccStatusChange}
-        placeholder="Account Status"
-        className="w-36"
-      />
-    </div>
-  );
+  const headerRight = null;
 
   return (
     <Card title="By Staff Debt" headerRight={headerRight}>

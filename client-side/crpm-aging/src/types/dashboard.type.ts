@@ -11,18 +11,37 @@ export interface FilterParams {
   netPositiveBalance: string;
   accClass: string;
   accDefinition: string;
+  monthsOutstandingBracket?: string; // New filter for months outstanding bracket
+  debtRange?: string; // New filter for debt range
+  smerSegment?: string; // New filter for SMER segment
 }
 
 // Summary data structure
 export interface SummaryData {
   totalOutstandingAmt: number;
   totalOutstandingAmtChange: number;
+  totalOutstandingNumOfAccounts: number;
   active: number;
+  activeNumOfAccounts: number;
   inactive: number;
+  inactiveNumOfAccounts: number;
   netProfit: number;
   netProfitChange: number;
+  netProfitNumOfAccounts: number;
   positiveBalance: number;
+  positiveBalanceNumOfAccounts: number;
+  negativeBalance: number;
+  negativeBalanceNumOfAccounts: number;
+  zeroBalance: number;
+  zeroBalanceNumOfAccounts: number;
   mit: number;
+  mitNumOfAccounts: number;
+  totalUnpaid: number;
+  totalUnpaidNumOfAccounts: number;
+  currentMonthUnpaid: number;
+  currentMonthUnpaidNumOfAccounts: number;
+  totalUndue: number;
+  totalUndueNumOfAccounts: number;
 }
 
 // Debt by station data structure
@@ -31,6 +50,11 @@ export interface DebtByStationData {
   station: string;
   numOfAccounts: number;
   debtAmount: number;
+  // Additional fields for Trade Receivable view
+  totalUndue?: number;
+  curMthUnpaid?: number;
+  ttlOsAmt?: number;
+  totalUnpaid?: number;
 }
 
 // Account class debt summary
@@ -59,6 +83,15 @@ export interface DetailedCustomerData {
   totalOutstandingAmt: number;
   lastPymtDate: string | null;
   lastPymtAmt: number;
+  monthsOutstanding: number; // New field for months outstanding
+  staffId: string; // New field for staff ID
+  mit: number; // New field for MIT amount
+  smerSegment?: string; // Add SMER segment field
+  // Additional fields for Trade Receivable view
+  totalUndue?: number;
+  curMthUnpaid?: number;
+  ttlOsAmt?: number;
+  totalUnpaid?: number;
 }
 
 // Complete debt data structure

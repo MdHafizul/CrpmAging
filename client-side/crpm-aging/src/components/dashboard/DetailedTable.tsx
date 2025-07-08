@@ -1,90 +1,258 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import Card from '../ui/Card';
 import Table from '../ui/Table';
 import Dropdown from '../ui/Dropdown';
+import { formatMonthsOutstanding, getMonthsOutstandingBracket, getBracketColor, getBracketBackgroundColor, getBracketTextColor } from '../../utils/formatter';
 
 interface DetailedTableProps {
   data: any[];
   loading?: boolean;
+  viewType: 'tradeReceivable' | 'agedDebt';
+  onViewTypeChange: (viewType: 'tradeReceivable' | 'agedDebt') => void;
   filters: {
+    // MIT filters (local to DetailedTable)
+    mitFilter: string;
+    onMitFilterChange: (value: string) => void;
+    mitFilterOptions: { value: string; label: string }[];
+    monthsOutstandingBracket: string;
+    onMonthsOutstandingBracketChange: (value: string) => void;
+    monthsOutstandingBracketOptions: { value: string; label: string }[];
+    
+    // Global filters (from FilterSection)
     businessArea: string;
-    onBusinessAreaChange: (value: string) => void;
-    businessAreaOptions: { value: string; label: string }[];
-    
     accStatus: string;
-    onAccStatusChange: (value: string) => void;
-    accStatusOptions: { value: string; label: string }[];
-    
+    accClass: string;
+    accDefinition: string;
     netPositiveBalance: string;
-    onNetPositiveBalanceChange: (value: string) => void;
-    netPositiveBalanceOptions: { value: string; label: string }[];
+    
+    // Add governmentType filter
+    governmentType?: string;
   };
 }
 
 const DetailedTable: React.FC<DetailedTableProps> = ({
   data,
   loading = false,
-  filters
+  filters,
+  viewType,
+  onViewTypeChange: _onViewTypeChange
 }) => {
   const [page, setPage] = useState(1);
   const rowsPerPage = 10;
   
-  // Define a subset of columns for the UI (the full data has many columns)
-  const columns = [
-    { header: 'BP No', accessor: 'bpNo' },
-    { header: 'Contract Acc', accessor: 'contractAcc' },
-    { header: 'Contract Account Name', accessor: 'contractAccountName' },
-    { header: 'Business Area', accessor: 'businessArea' },
-    { header: 'Station', accessor: 'station' },
-    { header: 'Acc Status', accessor: 'accStatus' },
+  // Filter data based on governmentType
+  const filteredData = useMemo(() => {
+    let filteredRecords = [...data];
+    
+    // Apply government type filter if available
+    if (filters.governmentType === 'government') {
+      // Show only account classes ending with 'G' (OPCG, LPCG)
+      filteredRecords = filteredRecords.filter(item => 
+        item.accClass?.endsWith('G')
+      );
+    } else if (filters.governmentType === 'non-government') {
+      // Show only account classes ending with 'N' (OPCN, LPCN)
+      filteredRecords = filteredRecords.filter(item => 
+        item.accClass?.endsWith('N')
+      );
+    }
+    
+    return filteredRecords;
+  }, [data, filters.governmentType]);
+  
+  // Base columns that appear in both views
+  const baseColumns = [
     { 
-      header: 'Total Outstanding (RM)', 
-      accessor: 'totalOutstandingAmt',
-      cell: (value: number) => (
-        <span className={`font-medium ${value > 0 ? 'text-red-600' : 'text-green-600'}`}>
-          RM {Math.abs(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-        </span>
-      )
+      header: 'Business Area', 
+      accessor: 'businessArea',
+      align: 'left' as const
+    },
+    { 
+      header: 'Station', 
+      accessor: 'station',
+      align: 'left' as const
+    },
+    { 
+      header: 'Contract Acc', 
+      accessor: 'contractAcc',
+      align: 'left' as const
+    },
+    { 
+      header: 'Contract Account Name', 
+      accessor: 'contractAccountName',
+      align: 'left' as const
+    },
+    {
+      header: 'ADID', 
+      accessor: 'accDefinition',
+      align: 'left' as const,
+      cell: (value: string) => <span className="font-medium text-gray-800">{value || '-'}</span>
+    },
+    { 
+      header: 'Account Class', 
+      accessor: 'accClass',
+      align: 'left' as const,
+      cell: (value: string) => <span className="text-gray-600">{value || '-'}</span>
+    },
+    { 
+      header: 'Acc Status', 
+      accessor: 'accStatus',
+      align: 'left' as const
+    },
+    { 
+      header: 'No of Months Outstanding', 
+      accessor: 'monthsOutstanding',
+      align: 'center' as const,
+      cell: (value: number) => {
+        const formattedValue = formatMonthsOutstanding(value);
+        return <span className="font-medium text-gray-800">{formattedValue}</span>;
+      }
+    },
+    { 
+      header: 'Outstanding Range', 
+      accessor: 'monthsOutstanding',
+      align: 'center' as const,
+      cell: (value: number) => {
+        const bracket = getMonthsOutstandingBracket(value);
+        const bracketColor = getBracketColor(bracket);
+        const backgroundColor = getBracketBackgroundColor(bracket);
+        const textColor = getBracketTextColor(bracket);
+        
+        return (
+          <span 
+            className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border"
+            style={{ 
+              backgroundColor: backgroundColor,
+              color: textColor,
+              borderColor: bracketColor + '40' // Add transparency to border
+            }}
+          >
+            {bracket}
+          </span>
+        );
+      }
+    },
+       { 
+      header: 'Staff ID', 
+      accessor: 'staffId',
+      align: 'left' as const
+    },
+       { 
+      header: 'MIT Amount', 
+      accessor: 'mit',
+      align: 'left' as const,
+      cell: (value: number) => {
+        if (filters.mitFilter === 'non-mit') {
+          return <span className="text-gray-400">-</span>;
+        }
+        return (
+          <span className="font-medium text-gray-700">
+            {value ? `RM ${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
+          </span>
+        );
+      }
     },
     { 
       header: 'Last Payment Date', 
       accessor: 'lastPymtDate',
-      cell: (value: string) => value || '-'
+      align: 'center' as const,
+      cell: (value: string) => <span className="text-gray-600">{value || '-'}</span>
     },
     { 
       header: 'Last Payment Amount', 
       accessor: 'lastPymtAmt',
-      cell: (value: number) => value ? `RM ${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'
+      align: 'right' as const,
+      cell: (value: number) => (
+        <span className="font-medium text-gray-700">
+          {value ? `RM ${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
+        </span>
+      )
+      }
+    ];
+
+  // Additional columns for Trade Receivable view
+  const tradeReceivableColumns = [
+    { 
+      header: 'Total Undue', 
+      accessor: 'totalUndue',
+      align: 'right' as const,
+      cell: (value: number) => (
+        <span className="font-medium text-blue-600">
+          RM {value?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+        </span>
+      )
+    },
+    { 
+      header: 'Cur.Mth Unpaid', 
+      accessor: 'curMthUnpaid',
+      align: 'right' as const,
+      cell: (value: number) => (
+        <span className="font-medium text-orange-600">
+          RM {value?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+        </span>
+      )
+    },
+    { 
+      header: 'TTL O/S Amt', 
+      accessor: 'ttlOsAmt',
+      align: 'right' as const,
+      cell: (value: number) => (
+        <span className="font-bold text-red-600">
+          RM {value?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+        </span>
+      )
+    },
+    { 
+      header: 'Total Unpaid', 
+      accessor: 'totalUnpaid',
+      align: 'right' as const,
+      cell: (value: number) => (
+        <span className="font-bold text-gray-900">
+          RM {value?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+        </span>
+      )
     }
   ];
+
+  // Aged Debt view columns - only show TTL O/S Amt
+  const agedDebtColumns = [
+    { 
+      header: 'TTL O/S Amt', 
+      accessor: 'totalOutstandingAmt',
+      align: 'right' as const,
+      cell: (value: number) => (
+        <span className={`font-bold ${value > 0 ? 'text-red-600' : 'text-green-600'}`}>
+          RM {Math.abs(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </span>
+      )
+    }
+  ];
+
+
+  // Combine columns based on view type
+  const columns = viewType === 'tradeReceivable' 
+    ? [...baseColumns, ...tradeReceivableColumns]
+    : [...baseColumns, ...agedDebtColumns];
   
-  // Calculate pagination
-  const totalPages = Math.ceil(data.length / rowsPerPage);
-  const paginatedData = data.slice((page - 1) * rowsPerPage, page * rowsPerPage);
+  // Calculate pagination based on filtered data
+  const totalPages = Math.ceil(filteredData.length / rowsPerPage);
+  const paginatedData = filteredData.slice((page - 1) * rowsPerPage, page * rowsPerPage);
   
   const headerRight = (
-    <div className="flex flex-wrap gap-2">
-      <Dropdown
-        options={filters.businessAreaOptions}
-        value={filters.businessArea}
-        onChange={filters.onBusinessAreaChange}
-        placeholder="All Business Areas"
-        className="w-40"
-      />
-      <Dropdown
-        options={filters.accStatusOptions}
-        value={filters.accStatus}
-        onChange={filters.onAccStatusChange}
-        placeholder="Account Status"
-        className="w-36"
-      />
-      <Dropdown
-        options={filters.netPositiveBalanceOptions}
-        value={filters.netPositiveBalance}
-        onChange={filters.onNetPositiveBalanceChange}
-        placeholder="Balance Type"
-        className="w-36"
-      />
+    <div className="flex flex-wrap gap-3 items-center">
+      {/* Range Bracket Filter */}
+      <div className="space-y-1">
+        <label className="block text-xs font-medium text-gray-600">
+          Outstanding Range
+        </label>
+        <Dropdown
+          options={filters.monthsOutstandingBracketOptions}
+          value={filters.monthsOutstandingBracket}
+          onChange={filters.onMonthsOutstandingBracketChange}
+          placeholder="All Ranges"
+          className="min-w-[140px]"
+        />
+      </div>
     </div>
   );
   
@@ -152,7 +320,7 @@ const DetailedTable: React.FC<DetailedTableProps> = ({
                       key={pageNum}
                       onClick={() => setPage(pageNum)}
                       className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${
-                        page === pageNum ? 'z-10 bg-blue-600 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600' 
+                        page === pageNum ? 'z-10 bg-blue-600 text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600' 
                         : 'text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50'
                       }`}
                     >

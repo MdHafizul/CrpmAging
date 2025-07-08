@@ -1,14 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useAppContext } from '../context/AppContext';
 import Layout from '../components/layout/Layout';
-import SummaryCards from '../components/dashboard/SummaryCard';
-import SummaryChart from '../components/dashboard/charts/SummaryChart';
+import { SummaryCardsContainer } from '../components/dashboard/SummaryCard';
 import DebtByStationTable from '../components/dashboard/DebtByStationTable';
 import DetailedTable from '../components/dashboard/DetailedTable';
 import AccClassDebtSummary from '../components/dashboard/AccClassDebtSummary';
-import AccDefinitionDebt from '../components/dashboard/AccDefinitionDebt';
+import { AccDefinitionDebt } from '../components/dashboard/AccDefinitionDebt';
 import StaffDebtTable from '../components/dashboard/StaffDebtTable';
-import { formatCurrency } from '../utils/formatter';
+import FilterSection from '../components/dashboard/FilterSection';
+import DriverTree from '../components/dashboard/charts/DriverTree';
 
 const DashboardPage: React.FC = () => {
   const { 
@@ -18,105 +18,93 @@ const DashboardPage: React.FC = () => {
     filters 
   } = useAppContext();
   
-  // Create summary cards data for dashboard
-  const summaryCardsData = summaryData ? [
-    {
-      title: 'Total Outstanding',
-      value: formatCurrency(summaryData.totalOutstandingAmt),
-      percentChange: summaryData.totalOutstandingAmtChange,
-      icon: (
-        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      )
-    },
-    {
-      title: 'Active',
-      value: formatCurrency(summaryData.active),
-      icon: (
-        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      )
-    },
-    {
-      title: 'Inactive',
-      value: formatCurrency(summaryData.inactive),
-      icon: (
-        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      )
-    },
-    {
-      title: 'Net Profit',
-      value: formatCurrency(summaryData.netProfit),
-      percentChange: summaryData.netProfitChange,
-      icon: (
-        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-        </svg>
-      )
-    },
-    {
-      title: 'Positive Balance',
-      value: formatCurrency(summaryData.positiveBalance),
-      icon: (
-        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      )
-    },
-    {
-      title: 'MIT',
-      value: formatCurrency(summaryData.mit),
-      icon: (
-        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
-        </svg>
-      )
-    }
-  ] : [];
+  // Remove local viewType state since it's now centralized in AppContext
   
-  // Create summary chart data
-  const summaryChartData = summaryData ? [
-    { name: 'Total Outstanding', value: summaryData.totalOutstandingAmt, color: '#3B82F6' },
-    { name: 'Active', value: summaryData.active, color: '#10B981' },
-    { name: 'Inactive', value: summaryData.inactive, color: '#EF4444' },
-    { name: 'Net Profit', value: summaryData.netProfit, color: '#8B5CF6' },
-    { name: 'Positive Balance', value: summaryData.positiveBalance, color: '#F59E0B' },
-    { name: 'MIT', value: summaryData.mit, color: '#6366F1' }
+  // Create driver tree data with Active/Inactive -> Government/Non-Government structure
+  const driverTreeData = summaryData ? [
+    // Active Government Account Classes
+    { 
+      category: 'OPCG', 
+      debtAmount: summaryData.active * 0.35, // 35% of active debt
+      numOfAcc: Math.floor(summaryData.activeNumOfAccounts * 0.35), 
+      color: '#3b82f6',
+      type: 'government' as const,
+      status: 'active' as const
+    },
+    { 
+      category: 'LPCG', 
+      debtAmount: summaryData.active * 0.25, // 25% of active debt
+      numOfAcc: Math.floor(summaryData.activeNumOfAccounts * 0.25), 
+      color: '#10b981',
+      type: 'government' as const,
+      status: 'active' as const
+    },
+    // Active Non-Government Account Classes
+    { 
+      category: 'OPCN', 
+      debtAmount: summaryData.active * 0.25, // 25% of active debt
+      numOfAcc: Math.floor(summaryData.activeNumOfAccounts * 0.25), 
+      color: '#ec4899',
+      type: 'non-government' as const,
+      status: 'active' as const
+    },
+    { 
+      category: 'LPCN', 
+      debtAmount: summaryData.active * 0.15, // 15% of active debt
+      numOfAcc: Math.floor(summaryData.activeNumOfAccounts * 0.15), 
+      color: '#f59e0b',
+      type: 'non-government' as const,
+      status: 'active' as const
+    },
+    // Inactive Government Account Classes
+    { 
+      category: 'OPCG', 
+      debtAmount: summaryData.inactive * 0.35, // 35% of inactive debt
+      numOfAcc: Math.floor(summaryData.inactiveNumOfAccounts * 0.35), 
+      color: '#6366f1',
+      type: 'government' as const,
+      status: 'inactive' as const
+    },
+    { 
+      category: 'LPCG', 
+      debtAmount: summaryData.inactive * 0.25, // 25% of inactive debt
+      numOfAcc: Math.floor(summaryData.inactiveNumOfAccounts * 0.25), 
+      color: '#059669',
+      type: 'government' as const,
+      status: 'inactive' as const
+    },
+    // Inactive Non-Government Account Classes
+    { 
+      category: 'OPCN', 
+      debtAmount: summaryData.inactive * 0.25, // 25% of inactive debt
+      numOfAcc: Math.floor(summaryData.inactiveNumOfAccounts * 0.25), 
+      color: '#db2777',
+      type: 'non-government' as const,
+      status: 'inactive' as const
+    },
+    { 
+      category: 'LPCN', 
+      debtAmount: summaryData.inactive * 0.15, // 15% of inactive debt
+      numOfAcc: Math.floor(summaryData.inactiveNumOfAccounts * 0.15), 
+      color: '#d97706',
+      type: 'non-government' as const,
+      status: 'inactive' as const
+    }
   ] : [];
   
   return (
     <Layout>
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Aged Debt Analytics Dashboard</h1>
         
-        {/* Summary Cards */}
-        <SummaryCards data={summaryCardsData} />
+        {/* Summary Cards with Pie Charts - Both Total Aged Debt cards will now tally */}
+        <SummaryCardsContainer summaryData={summaryData} />
         
-        {/* Summary Chart */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <SummaryChart data={summaryChartData} />
+        {/* Enhanced Driver Tree with Active/Inactive -> Government/Non-Government -> Account Classes */}
+        <DriverTree driverTreeData={driverTreeData} />
         
-          {/* Debt By Station */}
-          <DebtByStationTable 
-            data={debtData?.debtByStation || []} 
-            loading={isLoading}
-            filters={{
-              businessArea: filters.businessArea,
-              onBusinessAreaChange: filters.setBusinessArea,
-              businessAreaOptions: filters.businessAreaOptions
-            }}
-          />
-        </div>
-        
-        {/* Detailed Data Table */}
-        <DetailedTable 
-          data={debtData?.detailedCustomerData || []} 
-          loading={isLoading}
+        {/* Global Filter Section - Now includes view type and additional filters */}
+        <FilterSection 
           filters={{
             businessArea: filters.businessArea,
             onBusinessAreaChange: filters.setBusinessArea,
@@ -126,24 +114,64 @@ const DashboardPage: React.FC = () => {
             onAccStatusChange: filters.setAccStatus,
             accStatusOptions: filters.accStatusOptions,
             
-            netPositiveBalance: filters.netPositiveBalance,
-            onNetPositiveBalanceChange: filters.setNetPositiveBalance,
-            netPositiveBalanceOptions: filters.netPositiveBalanceOptions
-          }}
-        />
-        
-        {/* Account Class Debt Summary */}
-        <AccClassDebtSummary 
-          data={debtData?.accClassDebtSummary || []} 
-          loading={isLoading}
-          filters={{
             accClass: filters.accClass,
             onAccClassChange: filters.setAccClass,
             accClassOptions: filters.accClassOptions,
             
-            accStatus: filters.accStatus,
-            onAccStatusChange: filters.setAccStatus,
-            accStatusOptions: filters.accStatusOptions
+            accDefinition: filters.accDefinition,
+            onAccDefinitionChange: filters.setAccDefinition,
+            accDefinitionOptions: filters.accDefinitionOptions,
+            
+            netPositiveBalance: filters.netPositiveBalance,
+            onNetPositiveBalanceChange: filters.setNetPositiveBalance,
+            netPositiveBalanceOptions: filters.netPositiveBalanceOptions,
+            
+            monthsOutstandingBracket: filters.monthsOutstandingBracket,
+            onMonthsOutstandingBracketChange: filters.setMonthsOutstandingBracket,
+            monthsOutstandingBracketOptions: filters.monthsOutstandingBracketOptions,
+            
+            // New filters
+            debtRange: filters.debtRange,
+            onDebtRangeChange: filters.setDebtRange,
+            debtRangeOptions: filters.debtRangeOptions,
+            
+            smerSegment: filters.smerSegment,
+            onSmerSegmentChange: filters.setSmerSegment,
+            smerSegmentOptions: filters.smerSegmentOptions,
+            
+            // Centralized view type
+            viewType: filters.viewType,
+            onViewTypeChange: filters.setViewType,
+            
+            // Add government type filters to FilterSection
+            governmentType: filters.governmentType,
+            onGovernmentTypeChange: filters.setGovernmentType,
+            governmentTypeOptions: filters.governmentTypeOptions,
+            
+            // Add MIT filter to FilterSection
+            mitFilter: filters.mitFilter,
+            onMitFilterChange: filters.setMitFilter,
+            mitFilterOptions: filters.mitFilterOptions,
+          }}
+        />
+        
+        {/* Debt By Station Table - now uses centralized viewType */}
+        <DebtByStationTable 
+          data={debtData?.debtByStation || []} 
+          loading={isLoading}
+          viewType={filters.viewType}
+          onViewTypeChange={filters.setViewType}
+        />
+        
+        {/* Account Class Debt Summary - pass both government type and accClass filters */}
+        <AccClassDebtSummary 
+          data={debtData?.accClassDebtSummary || []} 
+          loading={isLoading}
+          filters={{
+            governmentType: filters.governmentType,
+            onGovernmentTypeChange: filters.setGovernmentType,
+            governmentTypeOptions: filters.governmentTypeOptions,
+            accClass: filters.accClass // Add the accClass filter
           }}
         />
         
@@ -151,25 +179,39 @@ const DashboardPage: React.FC = () => {
         <AccDefinitionDebt 
           data={debtData?.accDefinitionDebt || []} 
           loading={isLoading}
-          filters={{
-            accDefinition: filters.accDefinition,
-            onAccDefinitionChange: filters.setAccDefinition,
-            accDefinitionOptions: filters.accDefinitionOptions,
-            
-            accStatus: filters.accStatus,
-            onAccStatusChange: filters.setAccStatus,
-            accStatusOptions: filters.accStatusOptions
-          }}
         />
         
         {/* By Staff Debt */}
         <StaffDebtTable 
           data={debtData?.staffDebt || []} 
           loading={isLoading}
+        />
+
+
+        {/* Detailed Data Table - now uses centralized viewType */}
+        <DetailedTable 
+          data={debtData?.detailedCustomerData || []} 
+          loading={isLoading}
+          viewType={filters.viewType}
+          onViewTypeChange={filters.setViewType}
           filters={{
+            // MIT filters (local to DetailedTable)
+            mitFilter: filters.mitFilter,
+            onMitFilterChange: filters.setMitFilter,
+            mitFilterOptions: filters.mitFilterOptions,
+            monthsOutstandingBracket: filters.monthsOutstandingBracket,
+            onMonthsOutstandingBracketChange: filters.setMonthsOutstandingBracket,
+            monthsOutstandingBracketOptions: filters.monthsOutstandingBracketOptions,
+            
+            // Global filters (from FilterSection)
+            businessArea: filters.businessArea,
             accStatus: filters.accStatus,
-            onAccStatusChange: filters.setAccStatus,
-            accStatusOptions: filters.accStatusOptions
+            accClass: filters.accClass,
+            accDefinition: filters.accDefinition,
+            netPositiveBalance: filters.netPositiveBalance,
+            
+            // Add government type filter
+            governmentType: filters.governmentType,
           }}
         />
       </div>
