@@ -1,7 +1,8 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import Card from '../../ui/Card';
 import { formatCurrency } from '../../../utils/formatter';
+import { FiDownload, FiZoomIn, FiZoomOut, FiRefreshCw } from 'react-icons/fi';
 
 interface DriverTreeProps {
   driverTreeData?: {
@@ -17,6 +18,13 @@ interface DriverTreeProps {
 const DriverTree: React.FC<DriverTreeProps> = ({ driverTreeData }) => {
   const [selectedDriverNode, setSelectedDriverNode] = useState<string | null>(null);
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
+  // Add zoom state
+  const [zoomLevel, setZoomLevel] = useState<number>(1);
+  const [panPosition, setPanPosition] = useState<{ x: number, y: number }>({ x: 0, y: 0 });
+  const svgRef = useRef<SVGSVGElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [dragStart, setDragStart] = useState<{ x: number, y: number }>({ x: 0, y: 0 });
 
   // Process driver tree data with proper Active/Inactive -> Government/Non-Government structure
   const processedDriverData = useMemo(() => {
@@ -113,6 +121,90 @@ const DriverTree: React.FC<DriverTreeProps> = ({ driverTreeData }) => {
       ]
     };
   }, [processedDriverData]);
+
+  // Function to handle downloading the chart as PNG
+  const handleDownloadPNG = useCallback(() => {
+    if (svgRef.current) {
+      // Create a canvas with the SVG content
+      const svg = svgRef.current;
+      const svgData = new XMLSerializer().serializeToString(svg);
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      
+      // Set canvas dimensions to match SVG
+      canvas.width = svg.viewBox.baseVal.width;
+      canvas.height = svg.viewBox.baseVal.height;
+      
+      // Create an image from the SVG
+      const img = new Image();
+      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+      const URL = window.URL || window.webkitURL || window;
+      const url = URL.createObjectURL(svgBlob);
+      
+      img.onload = () => {
+        // Fill white background and draw the SVG image on canvas
+        if (ctx) {
+          ctx.fillStyle = "white";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0);
+          
+          // Convert canvas to PNG and trigger download
+          const png = canvas.toDataURL("image/png");
+          const link = document.createElement('a');
+          link.download = 'debt-aging-driver-tree.png';
+          link.href = png;
+          link.click();
+        }
+        
+        // Clean up
+        URL.revokeObjectURL(url);
+      };
+      
+      img.src = url;
+    }
+  }, []);
+
+  // Handle zoom controls
+  const zoomIn = () => {
+    setZoomLevel(prev => Math.min(prev + 0.2, 3));
+  };
+
+  const zoomOut = () => {
+    setZoomLevel(prev => Math.max(prev - 0.2, 0.5));
+  };
+
+  const resetZoom = () => {
+    setZoomLevel(1);
+    setPanPosition({ x: 0, y: 0 });
+  };
+
+  // Pan functionality
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    setDragStart({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isDragging) {
+      const dx = e.clientX - dragStart.x;
+      const dy = e.clientY - dragStart.y;
+      
+      setPanPosition(prev => ({ 
+        x: prev.x + dx / zoomLevel, 
+        y: prev.y + dy / zoomLevel 
+      }));
+      
+      setDragStart({ x: e.clientX, y: e.clientY });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleMouseLeave = () => {
+    setIsDragging(false);
+  };
 
   // Enhanced horizontal driver tree node component
   const HorizontalDriverTreeNode = useCallback(({ node, x, y, level = 0 }: any) => {
@@ -356,15 +448,64 @@ const DriverTree: React.FC<DriverTreeProps> = ({ driverTreeData }) => {
   }, []);
 
   return (
-    <Card title="Aged Debt (Positive Balance)">
+    <Card title="Driver Tree By Account Class">
       <div className="flex justify-between items-center mb-6">
         <div className="text-xs text-gray-500">
           Click nodes to highlight • {selectedDriverNode ? `Selected: ${selectedDriverNode}` : 'Select a node'}
         </div>
+        
+        {/* Add control buttons */}
+        <div className="flex items-center space-x-2">
+          <button 
+            className="p-2 bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 transition-colors"
+            onClick={zoomIn}
+            title="Zoom In"
+          >
+            <FiZoomIn size={16} />
+          </button>
+          <button 
+            className="p-2 bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 transition-colors"
+            onClick={zoomOut}
+            title="Zoom Out"
+          >
+            <FiZoomOut size={16} />
+          </button>
+          <button 
+            className="p-2 bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 transition-colors"
+            onClick={resetZoom}
+            title="Reset Zoom"
+          >
+            <FiRefreshCw size={16} />
+          </button>
+          <button 
+            className="p-2 bg-indigo-100 hover:bg-indigo-200 rounded-md text-indigo-700 transition-colors"
+            onClick={handleDownloadPNG}
+            title="Download as PNG"
+          >
+            <FiDownload size={16} />
+          </button>
+        </div>
       </div>
       
-      <div className="relative h-[900px] overflow-hidden bg-gradient-to-r from-gray-50 to-white rounded-lg">
-        <svg width="100%" height="100%" viewBox="0 0 1800 900">
+      <div 
+        ref={containerRef}
+        className="relative h-[900px] overflow-hidden bg-gradient-to-r from-gray-50 to-white rounded-lg cursor-grab active:cursor-grabbing"
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+      >
+        <svg 
+          ref={svgRef}
+          width="100%" 
+          height="100%" 
+          viewBox="0 0 1800 900" 
+          style={{
+            transform: `scale(${zoomLevel}) translate(${panPosition.x}px, ${panPosition.y}px)`,
+            transformOrigin: 'center center',
+            transition: isDragging ? 'none' : 'transform 0.3s ease'
+          }}
+        >
           {/* Background grid */}
           <defs>
             <pattern id="h-grid" width="40" height="40" patternUnits="userSpaceOnUse">
@@ -436,7 +577,7 @@ const DriverTree: React.FC<DriverTreeProps> = ({ driverTreeData }) => {
                       {/* Level 3: Account Classes */}
                       {typeBranch.children.map((accClass: any, accIndex: number) => {
                         const accX = 1150;
-                        const accY = typeY - 75 + (accIndex * 150); // More generous spacing for account classes
+                        const accY = typeY - 75 + (accIndex * 100); // More generous spacing for account classes
                         const isAccSelected = selectedDriverNode === accClass.name;
                         
                         return (
@@ -467,9 +608,14 @@ const DriverTree: React.FC<DriverTreeProps> = ({ driverTreeData }) => {
               </g>
             );
           })}
-          
- 
         </svg>
+        
+        {/* Zoom level indicator */}
+        <div className="absolute bottom-4 right-4 bg-white bg-opacity-80 px-3 py-1 rounded-md shadow-sm">
+          <span className="text-xs text-gray-600 font-medium">
+            Zoom: {Math.round(zoomLevel * 100)}%
+          </span>
+        </div>
       </div>
     </Card>
   );

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Dropdown from '../ui/Dropdown';
+import MultiSelect from '../ui/MultiSelect';
 import {
   getBracketColor,
   getBracketBackgroundColor,
@@ -16,9 +17,14 @@ interface FilterSectionProps {
     onAccClassChange: (value: string) => void;
     accClassOptions: { value: string; label: string }[];
     
+    // Single-select version (keep for compatibility)
     accDefinition: string;
     onAccDefinitionChange: (value: string) => void;
     accDefinitionOptions: { value: string; label: string }[];
+    
+    // Multi-select version
+    accDefinitions: string[];
+    setAccDefinitions: (values: string[]) => void;
     
     netPositiveBalance: string;
     onNetPositiveBalanceChange: (value: string) => void;
@@ -27,6 +33,10 @@ interface FilterSectionProps {
     businessArea: string;
     onBusinessAreaChange: (value: string) => void;
     businessAreaOptions: { value: string; label: string }[];
+    
+    // Multi-select versions
+    businessAreas: string[];
+    setBusinessAreas: (values: string[]) => void;
     
     monthsOutstandingBracket: string;
     onMonthsOutstandingBracketChange: (value: string) => void;
@@ -89,6 +99,16 @@ const FilterSection: React.FC<FilterSectionProps> = ({ filters }) => {
     return option?.label || value;
   };
 
+  // Helper function to get multi-select display values
+  const getMultiSelectDisplayValues = (values: string[], options: { value: string; label: string }[]) => {
+    if (!values.length) return null;
+    
+    return values.map(value => {
+      const option = options.find(opt => opt.value === value);
+      return option?.label || value;
+    }).join(', ');
+  };
+
   const clearAllFilters = () => {
     filters.onBusinessAreaChange('all');
     filters.onAccStatusChange('all');
@@ -100,6 +120,10 @@ const FilterSection: React.FC<FilterSectionProps> = ({ filters }) => {
     filters.onSmerSegmentChange('all');
     filters.onGovernmentTypeChange('all');
     filters.onMitFilterChange('all');
+    
+    // Clear multi-select filters
+    filters.setBusinessAreas([]);
+    filters.setAccDefinitions([]);
   };
 
   return (
@@ -314,28 +338,31 @@ const FilterSection: React.FC<FilterSectionProps> = ({ filters }) => {
         {isExpanded && (
           <div className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {/* Business Area Filter */}
+              {/* Business Area Filter - Multi-select version */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <label className="block text-sm font-semibold text-gray-800">
-                    Business Area
+                    Business Areas <span className="text-xs font-normal text-blue-600">(Multi-select)</span>
                   </label>
-                  {filters.businessArea !== 'all' && (
+                  {filters.businessAreas.length > 0 && (
                     <span className="text-xs text-blue-600 font-medium">
-                      Active
+                      {filters.businessAreas.length} selected
                     </span>
                   )}
                 </div>
-                <Dropdown
-                  options={filters.businessAreaOptions}
-                  value={filters.businessArea}
-                  onChange={filters.onBusinessAreaChange}
-                  placeholder="Select Business Area"
+                <MultiSelect
+                  options={filters.businessAreaOptions.filter(opt => opt.value !== 'all')}
+                  values={filters.businessAreas}
+                  onChange={filters.setBusinessAreas}
+                  placeholder="Select Business Areas"
                   className="w-full"
                 />
-                {filters.businessArea !== 'all' && (
-                  <div className="text-xs text-gray-600 bg-blue-50 px-2 py-1 rounded">
-                    Selected: {getFilterDisplayValue(filters.businessArea, filters.businessAreaOptions)}
+                {filters.businessAreas.length > 0 && (
+                  <div className="text-xs text-gray-600 bg-blue-50 px-2 py-1 rounded max-h-16 overflow-auto">
+                    Selected: {filters.businessAreas.map(value => {
+                      const option = filters.businessAreaOptions.find(opt => opt.value === value);
+                      return option?.label || value;
+                    }).join(', ')}
                   </div>
                 )}
               </div>
@@ -392,28 +419,31 @@ const FilterSection: React.FC<FilterSectionProps> = ({ filters }) => {
                 )}
               </div>
 
-              {/* ADID Filter */}
+              {/* ADID Filter - Multi-select version */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <label className="block text-sm font-semibold text-gray-800">
-                    ADID
+                    ADIDs <span className="text-xs font-normal text-blue-600">(Multi-select)</span>
                   </label>
-                  {filters.accDefinition !== 'all' && (
+                  {filters.accDefinitions.length > 0 && (
                     <span className="text-xs text-orange-600 font-medium">
-                      Active
+                      {filters.accDefinitions.length} selected
                     </span>
                   )}
                 </div>
-                <Dropdown
-                  options={filters.accDefinitionOptions}
-                  value={filters.accDefinition}
-                  onChange={filters.onAccDefinitionChange}
-                  placeholder="Select ADID"
+                <MultiSelect
+                  options={filters.accDefinitionOptions.filter(opt => opt.value !== 'all')}
+                  values={filters.accDefinitions}
+                  onChange={filters.setAccDefinitions}
+                  placeholder="Select ADIDs"
                   className="w-full"
                 />
-                {filters.accDefinition !== 'all' && (
-                  <div className="text-xs text-gray-600 bg-orange-50 px-2 py-1 rounded">
-                    Selected: {getFilterDisplayValue(filters.accDefinition, filters.accDefinitionOptions)}
+                {filters.accDefinitions.length > 0 && (
+                  <div className="text-xs text-gray-600 bg-orange-50 px-2 py-1 rounded max-h-16 overflow-auto">
+                    Selected: {filters.accDefinitions.map(value => {
+                      const option = filters.accDefinitionOptions.find(opt => opt.value === value);
+                      return option?.label || value;
+                    }).join(', ')}
                   </div>
                 )}
               </div>

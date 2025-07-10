@@ -205,11 +205,11 @@ const AccClassDebtSummary: React.FC<AccClassDebtSummaryProps> = ({
     // Add grand total row if there are multiple business areas
     if (groupedByBusinessArea.size > 1) {
       result.push({
-        businessArea: 'GRAND TOTAL',
+        businessArea: 'Grand Total',
         station: '',
         numOfAccounts: grandTotalAccounts,
         debtAmount: grandTotalDebt,
-        accClass: 'Grand Total',
+        accClass: 'All Classes',
         isGrandTotal: true
       });
     }
@@ -271,7 +271,7 @@ const AccClassDebtSummary: React.FC<AccClassDebtSummaryProps> = ({
       )
     },
     { 
-      header: 'Debt (RM)', 
+      header: 'TTL O/S AMT', 
       accessor: 'debtAmount',
       cell: (value: number, row: any) => (
         <span className={`font-medium ${row.isTotal ? 'font-bold text-blue-600' : 'text-gray-900'} ${row.isGrandTotal ? 'font-bold text-lg text-blue-600' : ''}`}>
@@ -289,7 +289,7 @@ const AccClassDebtSummary: React.FC<AccClassDebtSummaryProps> = ({
   );
 
   return (
-    <Card title="Account Class Debt Summary" headerRight={headerRight}>
+    <Card title="Summary Aged Debt By Acc Class" headerRight={headerRight}>
       <Table 
         columns={columns} 
         data={organizedData} 

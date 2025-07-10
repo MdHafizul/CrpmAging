@@ -7,10 +7,12 @@ export interface FilterOptions {
 // Filter parameters for API requests
 export interface FilterParams {
   businessArea: string;
+  businessAreas?: string[]; // Add multi-select array version
   accStatus: string;
   netPositiveBalance: string;
   accClass: string;
   accDefinition: string;
+  accDefinitions?: string[]; // Add multi-select array version
   monthsOutstandingBracket?: string; // New filter for months outstanding bracket
   debtRange?: string; // New filter for debt range
   smerSegment?: string; // New filter for SMER segment

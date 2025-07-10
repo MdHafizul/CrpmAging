@@ -27,15 +27,41 @@ export const getDebtData = async (filters: FilterParams): Promise<{
   // Simulate API call delay
   await delay(1000);
   
-  // Apply business area filter
+  // Initial data
   let filteredDebtByStation = mockDebtData.debtByStation;
   let filteredAccClassDebtSummary = mockDebtData.accClassDebtSummary;
   let filteredAccDefinitionDebt = mockDebtData.accDefinitionDebt;
   let filteredStaffDebt = mockDebtData.staffDebt;
   let filteredDetailedCustomerData = mockDebtData.detailedCustomerData;
   
-  // Apply business area filter
-  if (filters.businessArea !== 'all') {
+  // Apply business area filters (using multi-select values if available)
+  if (filters.businessAreas && filters.businessAreas.length > 0) {
+    // Multi-select filtering
+    console.log('Filtering by multiple business areas:', filters.businessAreas);
+    
+    filteredDebtByStation = filteredDebtByStation.filter(
+      item => filters.businessAreas!.includes(item.businessArea)
+    );
+    
+    filteredAccClassDebtSummary = filteredAccClassDebtSummary.filter(
+      item => filters.businessAreas!.includes(item.businessArea)
+    );
+    
+    filteredAccDefinitionDebt = filteredAccDefinitionDebt.filter(
+      item => filters.businessAreas!.includes(item.businessArea)
+    );
+    
+    filteredStaffDebt = filteredStaffDebt.filter(
+      item => filters.businessAreas!.includes(item.businessArea)
+    );
+    
+    filteredDetailedCustomerData = filteredDetailedCustomerData.filter(
+      item => filters.businessAreas!.includes(item.businessArea)
+    );
+  } else if (filters.businessArea !== 'all') {
+    // Single-select fallback
+    console.log('Filtering by single business area:', filters.businessArea);
+    
     filteredDebtByStation = filteredDebtByStation.filter(
       item => item.businessArea === filters.businessArea
     );
@@ -71,8 +97,25 @@ export const getDebtData = async (filters: FilterParams): Promise<{
     );
   }
   
-  // Apply account definition filter
+  // Apply single-select account definition filter (keep for backward compatibility)
   if (filters.accDefinition !== 'all') {
+    filteredDetailedCustomerData = filteredDetailedCustomerData.filter(
+      item => item.accDefinition === filters.accDefinition
+    );
+  }
+  
+  // Apply multi-select account definition filter
+  if (filters.accDefinitions && filters.accDefinitions.length > 0) {
+    // Multi-select filtering
+    console.log('Filtering by multiple account definitions:', filters.accDefinitions);
+    
+    filteredDetailedCustomerData = filteredDetailedCustomerData.filter(
+      item => filters.accDefinitions!.includes(item.accDefinition)
+    );
+  } else if (filters.accDefinition !== 'all') {
+    // Single-select fallback
+    console.log('Filtering by single account definition:', filters.accDefinition);
+    
     filteredDetailedCustomerData = filteredDetailedCustomerData.filter(
       item => item.accDefinition === filters.accDefinition
     );

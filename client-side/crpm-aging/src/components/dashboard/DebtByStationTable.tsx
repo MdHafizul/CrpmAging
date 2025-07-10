@@ -41,7 +41,7 @@ const DebtByStationTable: React.FC<DebtByStationTableProps> = ({
       accessor: 'businessArea',
       align: 'left' as const,
       cell: (value: string) => (
-        <span className={`font-medium ${value === 'TOTAL' ? 'text-blue-600 font-bold' : 'text-gray-900'}`}>
+        <span className={`font-medium ${value === 'Grand Total' ? 'text-blue-600 font-bold' : 'text-gray-900'}`}>
           {value}
         </span>
       )
@@ -51,7 +51,7 @@ const DebtByStationTable: React.FC<DebtByStationTableProps> = ({
       accessor: 'station',
       align: 'left' as const,
       cell: (value: string, row: any) => (
-        <span className={`font-medium ${row.businessArea === 'TOTAL' ? 'text-blue-600 font-bold' : 'text-gray-700'}`}>
+        <span className={`font-medium ${row.businessArea === 'Grand Total' ? 'text-blue-600 font-bold' : 'text-gray-700'}`}>
           {value}
         </span>
       )
@@ -61,7 +61,7 @@ const DebtByStationTable: React.FC<DebtByStationTableProps> = ({
       accessor: 'numOfAccounts',
       align: 'right' as const,
       cell: (value: number, row: any) => (
-        <span className={`font-medium ${row.businessArea === 'TOTAL' ? 'text-blue-600 font-bold text-lg' : ''}`}>
+        <span className={`font-medium ${row.businessArea === 'Grand Total' ? 'text-blue-600 font-bold text-lg' : ''}`}>
           {value.toLocaleString()}
         </span>
       )
@@ -75,7 +75,7 @@ const DebtByStationTable: React.FC<DebtByStationTableProps> = ({
       accessor: 'totalUndue',
       align: 'right' as const,
       cell: (value: number, row: any) => (
-        <span className={`font-medium ${row.businessArea === 'TOTAL' ? 'text-blue-600 font-bold text-lg' : 'text-blue-600'}`}>
+        <span className={`font-medium ${row.businessArea === 'Grand Total' ? 'text-blue-600 font-bold text-lg' : 'text-blue-600'}`}>
           RM {value?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
         </span>
       )
@@ -85,7 +85,7 @@ const DebtByStationTable: React.FC<DebtByStationTableProps> = ({
       accessor: 'curMthUnpaid',
       align: 'right' as const,
       cell: (value: number, row: any) => (
-        <span className={`font-medium ${row.businessArea === 'TOTAL' ? 'text-blue-600 font-bold text-lg' : 'text-orange-600'}`}>
+        <span className={`font-medium ${row.businessArea === 'Grand Total' ? 'text-blue-600 font-bold text-lg' : 'text-orange-600'}`}>
           RM {value?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
         </span>
       )
@@ -95,7 +95,7 @@ const DebtByStationTable: React.FC<DebtByStationTableProps> = ({
       accessor: 'ttlOsAmt',
       align: 'right' as const,
       cell: (value: number, row: any) => (
-        <span className={`${row.businessArea === 'TOTAL' ? 'font-bold text-blue-600 text-lg' : 'font-bold text-red-600'}`}>
+        <span className={`${row.businessArea === 'Grand Total' ? 'font-bold text-blue-600 text-lg' : 'font-bold text-red-600'}`}>
           RM {value?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
         </span>
       )
@@ -105,7 +105,7 @@ const DebtByStationTable: React.FC<DebtByStationTableProps> = ({
       accessor: 'totalUnpaid',
       align: 'right' as const,
       cell: (value: number, row: any) => (
-        <span className={`${row.businessArea === 'TOTAL' ? 'font-bold text-blue-600 text-lg' : 'font-bold text-gray-900'}`}>
+        <span className={`${row.businessArea === 'Grand Total' ? 'font-bold text-blue-600 text-lg' : 'font-bold text-gray-900'}`}>
           RM {value?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
         </span>
       )
@@ -119,7 +119,7 @@ const DebtByStationTable: React.FC<DebtByStationTableProps> = ({
       accessor: 'debtAmount',
       align: 'right' as const,
       cell: (value: number, row: any) => (
-        <span className={`${row.businessArea === 'TOTAL' ? 'font-bold text-blue-600 text-lg' : 'font-bold text-gray-900'}`}>
+        <span className={`${row.businessArea === 'Grand Total' ? 'font-bold text-blue-600 text-lg' : 'font-bold text-gray-900'}`}>
           RM {value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </span>
       )
@@ -148,7 +148,7 @@ const DebtByStationTable: React.FC<DebtByStationTableProps> = ({
 
   // Create totals row data
   const totalsRowData = {
-    businessArea: 'TOTAL',
+    businessArea: 'Grand Total',
     station: '',
     numOfAccounts: totals.numOfAccounts,
     totalUndue: totals.totalUndue,

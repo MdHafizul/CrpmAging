@@ -9,6 +9,7 @@ import { AccDefinitionDebt } from '../components/dashboard/AccDefinitionDebt';
 import StaffDebtTable from '../components/dashboard/StaffDebtTable';
 import FilterSection from '../components/dashboard/FilterSection';
 import DriverTree from '../components/dashboard/charts/DriverTree';
+import DirectedGraph from '../components/dashboard/charts/DirectedGraph';
 
 const DashboardPage: React.FC = () => {
   const { 
@@ -17,8 +18,6 @@ const DashboardPage: React.FC = () => {
     isLoading,
     filters 
   } = useAppContext();
-  
-  // Remove local viewType state since it's now centralized in AppContext
   
   // Create driver tree data with Active/Inactive -> Government/Non-Government structure
   const driverTreeData = summaryData ? [
@@ -103,34 +102,37 @@ const DashboardPage: React.FC = () => {
         {/* Enhanced Driver Tree with Active/Inactive -> Government/Non-Government -> Account Classes */}
         <DriverTree driverTreeData={driverTreeData} />
         
-        {/* Global Filter Section - Now includes view type and additional filters */}
+        {/* Directed Graph visualization - Add new component */}
+        <DirectedGraph title="Driver Tree By Smer Segment" />
+        
+        {/* Global Filter Section */}
         <FilterSection 
           filters={{
+            // Business Area - both single and multi-select
             businessArea: filters.businessArea,
             onBusinessAreaChange: filters.setBusinessArea,
             businessAreaOptions: filters.businessAreaOptions,
+            businessAreas: filters.businessAreas,
+            setBusinessAreas: filters.setBusinessAreas,
             
+            // Account Definition - both single and multi-select
+            accDefinition: filters.accDefinition,
+            onAccDefinitionChange: filters.setAccDefinition,
+            accDefinitionOptions: filters.accDefinitionOptions,
+            accDefinitions: filters.accDefinitions,
+            setAccDefinitions: filters.setAccDefinitions,
+            
+            // Account Status
             accStatus: filters.accStatus,
             onAccStatusChange: filters.setAccStatus,
             accStatusOptions: filters.accStatusOptions,
             
+            // Account Class
             accClass: filters.accClass,
             onAccClassChange: filters.setAccClass,
             accClassOptions: filters.accClassOptions,
             
-            accDefinition: filters.accDefinition,
-            onAccDefinitionChange: filters.setAccDefinition,
-            accDefinitionOptions: filters.accDefinitionOptions,
-            
-            netPositiveBalance: filters.netPositiveBalance,
-            onNetPositiveBalanceChange: filters.setNetPositiveBalance,
-            netPositiveBalanceOptions: filters.netPositiveBalanceOptions,
-            
-            monthsOutstandingBracket: filters.monthsOutstandingBracket,
-            onMonthsOutstandingBracketChange: filters.setMonthsOutstandingBracket,
-            monthsOutstandingBracketOptions: filters.monthsOutstandingBracketOptions,
-            
-            // New filters
+            // Other filters
             debtRange: filters.debtRange,
             onDebtRangeChange: filters.setDebtRange,
             debtRangeOptions: filters.debtRangeOptions,
@@ -152,6 +154,16 @@ const DashboardPage: React.FC = () => {
             mitFilter: filters.mitFilter,
             onMitFilterChange: filters.setMitFilter,
             mitFilterOptions: filters.mitFilterOptions,
+            
+            // Net Positive Balance filter
+            netPositiveBalance: filters.netPositiveBalance,
+            onNetPositiveBalanceChange: filters.setNetPositiveBalance,
+            netPositiveBalanceOptions: filters.netPositiveBalanceOptions,
+            
+            // Months outstanding bracket filter
+            monthsOutstandingBracket: filters.monthsOutstandingBracket,
+            onMonthsOutstandingBracketChange: filters.setMonthsOutstandingBracket,
+            monthsOutstandingBracketOptions: filters.monthsOutstandingBracketOptions,
           }}
         />
         
@@ -183,7 +195,10 @@ const DashboardPage: React.FC = () => {
         
         {/* By Staff Debt */}
         <StaffDebtTable 
-          data={debtData?.staffDebt || []} 
+          data={(debtData?.staffDebt || []).map(item => ({
+            ...item,
+            ttlOsAmt: item.ttlOsAmt ?? 0 // Ensure ttlOsAmt is always a number
+          }))} 
           loading={isLoading}
         />
 

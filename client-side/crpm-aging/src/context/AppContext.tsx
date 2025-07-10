@@ -22,6 +22,10 @@ interface AppContextProps {
     setBusinessArea: (value: string) => void;
     businessAreaOptions: FilterOptions[];
     
+    // New multi-select state
+    businessAreas: string[];
+    setBusinessAreas: (value: string[]) => void;
+    
     accStatus: string;
     setAccStatus: (value: string) => void;
     accStatusOptions: FilterOptions[];
@@ -37,6 +41,10 @@ interface AppContextProps {
     accDefinition: string;
     setAccDefinition: (value: string) => void;
     accDefinitionOptions: FilterOptions[];
+    
+    // New multi-select version
+    accDefinitions: string[];
+    setAccDefinitions: (value: string[]) => void;
     
     governmentType: string;
     setGovernmentType: (value: string) => void;
@@ -83,10 +91,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   
   // Filters
   const [businessArea, setBusinessArea] = useState<string>('all');
+  const [businessAreas, setBusinessAreas] = useState<string[]>([]);
   const [accStatus, setAccStatus] = useState<string>('all');
   const [netPositiveBalance, setNetPositiveBalance] = useState<string>('all');
   const [accClass, setAccClass] = useState<string>('all');
   const [accDefinition, setAccDefinition] = useState<string>('all');
+  const [accDefinitions, setAccDefinitions] = useState<string[]>([]);
   const [governmentType, setGovernmentType] = useState<string>('all');
   const [mitFilter, setMitFilter] = useState<string>('all');
   const [monthsOutstandingBracket, setMonthsOutstandingBracket] = useState<string>('all');
@@ -193,6 +203,40 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     { value: 'BLANK', label: 'BLANKS' },
   ];
   
+  // Sync single-select and multi-select filters
+  useEffect(() => {
+    // When single-select businessArea changes to a specific value, update the multi-select
+    if (businessArea !== 'all') {
+      setBusinessAreas([businessArea]);
+    }
+  }, [businessArea]);
+
+  useEffect(() => {
+    // When single-select accDefinition changes to a specific value, update the multi-select
+    if (accDefinition !== 'all') {
+      setAccDefinitions([accDefinition]);
+    }
+  }, [accDefinition]);
+
+  // Handle sync from multi-select to single-select
+  useEffect(() => {
+    // When multi-select has exactly one value, update single-select
+    if (businessAreas.length === 1) {
+      setBusinessArea(businessAreas[0]);
+    } else if (businessAreas.length === 0) {
+      setBusinessArea('all');
+    }
+  }, [businessAreas]);
+
+  useEffect(() => {
+    // When multi-select has exactly one value, update single-select
+    if (accDefinitions.length === 1) {
+      setAccDefinition(accDefinitions[0]);
+    } else if (accDefinitions.length === 0) {
+      setAccDefinition('all');
+    }
+  }, [accDefinitions]);
+
   // Load data when component mounts or when filters change
   useEffect(() => {
     const loadData = async () => {
@@ -200,13 +244,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       try {
         const data = await getDebtData({
           businessArea,
+          businessAreas,
           accStatus,
           netPositiveBalance,
           accClass,
           accDefinition,
+          accDefinitions,
           monthsOutstandingBracket,
-          debtRange, // Add new filter
-          smerSegment, // Add new filter
+          debtRange,
+          smerSegment,
         });
         
         setSummaryData(data.summary);
@@ -220,9 +266,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     
     loadData();
   }, [
-    businessArea, accStatus, netPositiveBalance, accClass, 
-    accDefinition, governmentType, mitFilter, monthsOutstandingBracket,
-    debtRange, smerSegment // Add new dependencies
+    businessArea, businessAreas, accStatus, netPositiveBalance, accClass, 
+    accDefinition, accDefinitions, governmentType, mitFilter, monthsOutstandingBracket,
+    debtRange, smerSegment
   ]);
   
   // Refresh data function
@@ -231,13 +277,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       const data = await getDebtData({
         businessArea,
+        businessAreas, // Add multi-select filters
         accStatus,
         netPositiveBalance,
         accClass,
         accDefinition,
+        accDefinitions, // Add multi-select filters
         monthsOutstandingBracket,
-        debtRange, // Add new filter
-        smerSegment, // Add new filter
+        debtRange,
+        smerSegment,
       });
       
       setSummaryData(data.summary);
@@ -263,9 +311,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     
     // Filters
     filters: {
+      // Single-select versions (keep for compatibility)
       businessArea,
       setBusinessArea,
       businessAreaOptions,
+      
+      // Multi-select versions
+      businessAreas,
+      setBusinessAreas,
       
       accStatus,
       setAccStatus,
@@ -279,9 +332,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setAccClass,
       accClassOptions,
       
+      // Single-select version (keep for compatibility)
       accDefinition,
       setAccDefinition,
       accDefinitionOptions,
+      
+      // Multi-select version
+      accDefinitions,
+      setAccDefinitions,
       
       governmentType,
       setGovernmentType,

@@ -133,11 +133,11 @@ export const AccDefinitionDebt: React.FC<AccDefinitionDebtProps> = ({
     // Add grand total row if there are multiple business areas
     if (groupedByBusinessArea.size > 1) {
       result.push({
-        businessArea: 'GRAND TOTAL',
+        businessArea: 'Grand Total',
         station: '',
         numOfAccounts: grandTotalAccounts,
         debtAmount: grandTotalDebt,
-        accDefinition: 'Grand Total',
+        accDefinition: 'ADID',
         isGrandTotal: true
       });
     }
@@ -238,7 +238,7 @@ export const AccDefinitionDebt: React.FC<AccDefinitionDebtProps> = ({
       )
     },
     { 
-      header: 'Debt Amount', 
+      header: 'TTL O/S AMT', 
       accessor: 'debtAmount',
       cell: (value: number, row: any) => (
         <span className={`font-medium ${row.isTotal ? 'font-bold text-blue-600' : 'text-gray-900'} ${row.isGrandTotal ? 'font-bold text-lg text-blue-600' : ''}`}>
@@ -256,12 +256,12 @@ export const AccDefinitionDebt: React.FC<AccDefinitionDebtProps> = ({
   );
 
   return (
-    <Card title="Account Definition Debt" headerRight={headerRight}>
+    <Card title="Summary Aged Debt By ADID" headerRight={headerRight}>
       <Table 
         columns={columns} 
         data={organizedData}
         loading={loading}
-        emptyMessage="No account definition debt data available"
+        emptyMessage="No account determination (ADID) debt data available"
       />
     </Card>
   );
