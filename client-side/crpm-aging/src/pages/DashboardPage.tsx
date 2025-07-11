@@ -179,6 +179,8 @@ const DashboardPage: React.FC = () => {
         <AccClassDebtSummary 
           data={debtData?.accClassDebtSummary || []} 
           loading={isLoading}
+          viewType={filters.viewType}
+          onViewTypeChange={filters.setViewType}
           filters={{
             governmentType: filters.governmentType,
             onGovernmentTypeChange: filters.setGovernmentType,
@@ -191,6 +193,8 @@ const DashboardPage: React.FC = () => {
         <AccDefinitionDebt 
           data={debtData?.accDefinitionDebt || []} 
           loading={isLoading}
+          viewType={filters.viewType}
+          onViewTypeChange={filters.setViewType}
         />
         
         {/* By Staff Debt */}
@@ -200,6 +204,8 @@ const DashboardPage: React.FC = () => {
             ttlOsAmt: item.ttlOsAmt ?? 0 // Ensure ttlOsAmt is always a number
           }))} 
           loading={isLoading}
+          viewType={filters.viewType}
+          onViewTypeChange={filters.setViewType}
         />
 
 

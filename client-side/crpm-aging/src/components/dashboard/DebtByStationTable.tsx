@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import Card from '../ui/Card';
 import Table from '../ui/Table';
 import Dropdown from '../ui/Dropdown';
@@ -35,6 +35,34 @@ const DebtByStationTable: React.FC<DebtByStationTableProps> = ({
   viewType,
   filters
 }) => {
+  // Calculate totals first for percentage calculations
+  const totals = useMemo(() => ({
+    numOfAccounts: data.reduce((sum, item) => sum + item.numOfAccounts, 0),
+    debtAmount: data.reduce((sum, item) => sum + item.debtAmount, 0),
+    totalUndue: data.reduce((sum, item) => sum + (item.totalUndue || 0), 0),
+    curMthUnpaid: data.reduce((sum, item) => sum + (item.curMthUnpaid || 0), 0),
+    ttlOsAmt: data.reduce((sum, item) => sum + (item.ttlOsAmt || 0), 0),
+    totalUnpaid: data.reduce((sum, item) => sum + (item.totalUnpaid || 0), 0)
+  }), [data]);
+
+  // Add percentage and sort data
+  const processedData = useMemo(() => {
+    // Calculate which total to use based on view type
+    const totalToUse = viewType === 'tradeReceivable' ? totals.ttlOsAmt : totals.debtAmount;
+    
+    // Add percentage to each row
+    const withPercentages = data.map(item => {
+      const valueToUse = viewType === 'tradeReceivable' ? (item.ttlOsAmt || 0) : item.debtAmount;
+      return {
+        ...item,
+        percentage: totalToUse > 0 ? (valueToUse / totalToUse) * 100 : 0
+      };
+    });
+    
+    // Sort by percentage in descending order
+    return [...withPercentages].sort((a, b) => b.percentage - a.percentage);
+  }, [data, totals, viewType]);
+
   const baseColumns = [
     { 
       header: 'Business Area', 
@@ -63,6 +91,30 @@ const DebtByStationTable: React.FC<DebtByStationTableProps> = ({
       cell: (value: number, row: any) => (
         <span className={`font-medium ${row.businessArea === 'Grand Total' ? 'text-blue-600 font-bold text-lg' : ''}`}>
           {value.toLocaleString()}
+        </span>
+      )
+    }
+  ];
+
+  // Aged Debt view columns - with totals row styling
+  const agedDebtColumns = [
+    { 
+      header: 'TTL O/S Amt', 
+      accessor: 'debtAmount',
+      align: 'right' as const,
+      cell: (value: number, row: any) => (
+        <span className={`${row.businessArea === 'Grand Total' ? 'font-bold text-blue-600 text-lg' : 'font-bold text-gray-900'}`}>
+          RM {value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </span>
+      )
+    },
+    { 
+      header: '% of Total', 
+      accessor: 'percentage',
+      align: 'right' as const,
+      cell: (value: number, row: any) => (
+        <span className={`${row.businessArea === 'Grand Total' ? 'font-bold text-blue-600 text-lg' : 'font-medium text-gray-900'}`}>
+          {row.businessArea === 'Grand Total' ? '100.00%' : value.toFixed(2) + '%'}
         </span>
       )
     }
@@ -101,6 +153,16 @@ const DebtByStationTable: React.FC<DebtByStationTableProps> = ({
       )
     },
     { 
+      header: '% of Total', 
+      accessor: 'percentage',
+      align: 'right' as const,
+      cell: (value: number, row: any) => (
+        <span className={`${row.businessArea === 'Grand Total' ? 'font-bold text-blue-600 text-lg' : 'font-medium text-gray-900'}`}>
+          {row.businessArea === 'Grand Total' ? '100.00%' : value.toFixed(2) + '%'}
+        </span>
+      )
+    },
+    { 
       header: 'Total Unpaid', 
       accessor: 'totalUnpaid',
       align: 'right' as const,
@@ -112,39 +174,10 @@ const DebtByStationTable: React.FC<DebtByStationTableProps> = ({
     }
   ];
 
-  // Aged Debt view columns - with totals row styling
-  const agedDebtColumns = [
-    { 
-      header: 'TTL O/S Amt', 
-      accessor: 'debtAmount',
-      align: 'right' as const,
-      cell: (value: number, row: any) => (
-        <span className={`${row.businessArea === 'Grand Total' ? 'font-bold text-blue-600 text-lg' : 'font-bold text-gray-900'}`}>
-          RM {value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-        </span>
-      )
-    }
-  ];
-
   // Combine columns based on view type
   const columns = viewType === 'tradeReceivable' 
     ? [...baseColumns, ...tradeReceivableColumns]
     : [...baseColumns, ...agedDebtColumns];
-
-  // Calculate totals based on view type
-  const calculateTotals = () => {
-    const totals = {
-      numOfAccounts: data.reduce((sum, item) => sum + item.numOfAccounts, 0),
-      totalUndue: data.reduce((sum, item) => sum + (item.totalUndue || 0), 0),
-      curMthUnpaid: data.reduce((sum, item) => sum + (item.curMthUnpaid || 0), 0),
-      ttlOsAmt: data.reduce((sum, item) => sum + (item.ttlOsAmt || 0), 0),
-      totalUnpaid: data.reduce((sum, item) => sum + (item.totalUnpaid || 0), 0),
-      debtAmount: data.reduce((sum, item) => sum + item.debtAmount, 0)
-    };
-    return totals;
-  };
-
-  const totals = calculateTotals();
 
   // Create totals row data
   const totalsRowData = {
@@ -155,11 +188,12 @@ const DebtByStationTable: React.FC<DebtByStationTableProps> = ({
     curMthUnpaid: totals.curMthUnpaid,
     ttlOsAmt: totals.ttlOsAmt,
     totalUnpaid: totals.totalUnpaid,
-    debtAmount: totals.debtAmount
+    debtAmount: totals.debtAmount,
+    percentage: 100 // Always 100%
   };
 
   // Combine data with totals row
-  const dataWithTotals = [...data, totalsRowData];
+  const dataWithTotals = [...processedData, totalsRowData];
 
   const headerRight = (
     <div className="flex items-center gap-4">

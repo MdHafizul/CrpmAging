@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import Card from '../ui/Card';
 import Table from '../ui/Table';
 
@@ -7,24 +7,59 @@ interface StaffDebtData {
   station: string;
   numOfAccounts: number;
   ttlOsAmt: number;
+  // Add Trade Receivable view fields
+  totalUndue?: number;
+  curMthUnpaid?: number;
+  debtAmount?: number; // Same as ttlOsAmt for consistency
+  totalUnpaid?: number;
 }
 
 interface StaffDebtTableProps {
   data: StaffDebtData[];
   loading?: boolean;
+  viewType?: 'tradeReceivable' | 'agedDebt';
+  onViewTypeChange?: (viewType: 'tradeReceivable' | 'agedDebt') => void;
+}
+
+interface TableRow extends StaffDebtData {
+  isFirstInGroup?: boolean;
+  isTotal?: boolean; 
+  isGrandTotal?: boolean;
 }
 
 const StaffDebtTable: React.FC<StaffDebtTableProps> = ({
   data,
-  loading = false
+  loading = false,
+  viewType = 'agedDebt'
 }) => {
-  const columns = [
+  // Calculate totals first for percentage calculations
+  const totals = useMemo(() => ({
+    numOfAccounts: data.reduce((sum, item) => sum + item.numOfAccounts, 0),
+    ttlOsAmt: data.reduce((sum, item) => sum + (item.ttlOsAmt || 0), 0),
+    totalUndue: data.reduce((sum, item) => sum + (item.totalUndue || 0), 0),
+    curMthUnpaid: data.reduce((sum, item) => sum + (item.curMthUnpaid || 0), 0),
+    totalUnpaid: data.reduce((sum, item) => sum + (item.totalUnpaid || 0), 0)
+  }), [data]);
+
+  // Calculate percentages and sort data
+  const processedData = useMemo(() => {
+    // Add percentage to each row based on view type
+    const withPercentages = data.map(item => ({
+      ...item,
+      percentage: totals.ttlOsAmt > 0 ? (item.ttlOsAmt / totals.ttlOsAmt) * 100 : 0
+    }));
+    
+    // Sort by percentage in descending order
+    return [...withPercentages].sort((a, b) => b.percentage - a.percentage);
+  }, [data, totals.ttlOsAmt]);
+  
+  const baseColumns = [
     { 
       header: 'Business Area', 
       accessor: 'businessArea',
       align: 'left' as const,
       cell: (value: string, row: any) => (
-        <span className={`font-medium ${row.businessArea === 'TOTAL' ? 'text-blue-600 font-bold' : 'text-gray-900'}`}>
+        <span className={`font-medium ${value === 'TOTAL' ? 'text-blue-600 font-bold' : 'text-gray-900'}`}>
           {value}
         </span>
       )
@@ -49,45 +84,108 @@ const StaffDebtTable: React.FC<StaffDebtTableProps> = ({
         </span>
       )
     },
+  ];
+
+  // Additional columns for Trade Receivable view
+  const tradeReceivableColumns = [
     { 
-      header: 'TTL O/S AMT', 
+      header: 'Total Undue', 
+      accessor: 'totalUndue',
+      align: 'right' as const,
+      cell: (value: number, row: TableRow) => (
+        <span className={`font-medium ${row.businessArea === 'TOTAL' ? 'text-blue-600 font-bold text-lg' : 'text-blue-600'}`}>
+          RM {value?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+        </span>
+      )
+    },
+    { 
+      header: 'Cur.Mth Unpaid', 
+      accessor: 'curMthUnpaid',
+      align: 'right' as const,
+      cell: (value: number, row: TableRow) => (
+        <span className={`font-medium ${row.businessArea === 'TOTAL' ? 'text-blue-600 font-bold text-lg' : 'text-orange-600'}`}>
+          RM {value?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+        </span>
+      )
+    },
+    { 
+      header: 'TTL O/S Amt', 
       accessor: 'ttlOsAmt',
       align: 'right' as const,
-      cell: (value: number, row: any) => (
-        <span className={`font-medium ${row.businessArea === 'TOTAL' ? 'text-blue-600 font-bold text-lg' : 'text-gray-900'}`}>
-          RM {value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      cell: (value: number, row: TableRow) => (
+        <span className={`${row.businessArea === 'TOTAL' ? 'font-bold text-blue-600 text-lg' : 'font-bold text-red-600'}`}>
+          RM {value?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+        </span>
+      )
+    },
+    { 
+      header: '% of Total', 
+      accessor: 'percentage',
+      align: 'right' as const,
+      cell: (value: number, row: TableRow) => (
+        <span className={`${row.businessArea === 'TOTAL' ? 'font-bold text-blue-600 text-lg' : 'font-medium text-gray-900'}`}>
+          {row.businessArea === 'TOTAL' ? '100.00%' : value.toFixed(2) + '%'}
+        </span>
+      )
+    },
+    { 
+      header: 'Total Unpaid', 
+      accessor: 'totalUnpaid',
+      align: 'right' as const,
+      cell: (value: number, row: TableRow) => (
+        <span className={`${row.businessArea === 'TOTAL' ? 'font-bold text-blue-600 text-lg' : 'font-bold text-gray-900'}`}>
+          RM {value?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
         </span>
       )
     }
   ];
 
-  // Calculate totals based on view type
-  const calculateTotals = () => {
-    const totals = {
-      numOfAccounts: data.reduce((sum, item) => sum + item.numOfAccounts, 0),
-      ttlOsAmt: data.reduce((sum, item) => sum + (item.ttlOsAmt || 0), 0),
-    };
-    return totals;
-  };
+  // Aged Debt view columns with percentage column
+  const agedDebtColumns = [
+    { 
+      header: 'TTL O/S Amt', 
+      accessor: 'ttlOsAmt',
+      align: 'right' as const,
+      cell: (value: number, row: TableRow) => (
+        <span className={`${row.businessArea === 'TOTAL' ? 'font-bold text-blue-600 text-lg' : 'font-bold text-gray-900'}`}>
+          RM {value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </span>
+      )
+    },
+    { 
+      header: '% of Total', 
+      accessor: 'percentage',
+      align: 'right' as const,
+      cell: (value: number, row: TableRow) => (
+        <span className={`${row.businessArea === 'TOTAL' ? 'font-bold text-blue-600 text-lg' : 'font-medium text-gray-900'}`}>
+          {row.businessArea === 'TOTAL' ? '100.00%' : value.toFixed(2) + '%'}
+        </span>
+      )
+    }
+  ];
 
-  const totals = calculateTotals();
+  // Combine columns based on view type
+  const columns = viewType === 'tradeReceivable' 
+    ? [...baseColumns, ...tradeReceivableColumns]
+    : [...baseColumns, ...agedDebtColumns];
 
-  // Create totals row data - Make sure the businessArea is exactly 'TOTAL'
+  // Create totals row data with percentage
   const totalsRowData = {
-    businessArea: 'TOTAL', // This string needs to match exactly what's checked in cell renderers
-    station: 'All Stations', // Add a clear label instead of empty string
+    businessArea: 'TOTAL',
+    station: 'All Stations',
     numOfAccounts: totals.numOfAccounts,
     ttlOsAmt: totals.ttlOsAmt,
+    percentage: 100, // Always 100%
+    totalUndue: totals.totalUndue,
+    curMthUnpaid: totals.curMthUnpaid,
+    totalUnpaid: totals.totalUnpaid
   };
 
-  // Combine data with totals row
-  const dataWithTotals = [...data, totalsRowData];
-
-
-  const headerRight = null;
+  // Combine data with totals row - keep totals at bottom regardless of sorting
+  const dataWithTotals = [...processedData, totalsRowData];
 
   return (
-    <Card title="By Staff Debt" headerRight={headerRight}>
+    <Card title="By Staff Debt">
       <Table 
         columns={columns} 
         data={dataWithTotals} 

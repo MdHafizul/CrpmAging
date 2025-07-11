@@ -56,6 +56,66 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
     return null;
   };
 
+  // Function to calculate percentage
+  const calculatePercentage = (value: number) => {
+    return totalValue > 0 ? ((value / totalValue) * 100).toFixed(1) : '0';
+  };
+
+  // Custom label component for the percentage indicators with arrows
+  const renderCustomizedLabel = (props: any) => {
+    const { cx, cy, midAngle, innerRadius, outerRadius, percent, index, value, name } = props;
+    
+    // Calculate the position for the label, outside the pie
+    const RADIAN = Math.PI / 180;
+    const radius = outerRadius * 1.35; // Position outside the pie
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+    
+    // Calculate arrow points (start from outer edge of pie toward the label)
+    const arrowStartRadius = outerRadius + 5;
+    const arrowStartX = cx + arrowStartRadius * Math.cos(-midAngle * RADIAN);
+    const arrowStartY = cy + arrowStartRadius * Math.sin(-midAngle * RADIAN);
+    
+    // Calculate arrow end point (just before the label)
+    const arrowEndRadius = outerRadius * 1.3;
+    const arrowEndX = cx + arrowEndRadius * Math.cos(-midAngle * RADIAN);
+    const arrowEndY = cy + arrowEndRadius * Math.sin(-midAngle * RADIAN);
+    
+    // Calculate percentage
+    const percentage = (percent * 100).toFixed(1);
+    
+    // Determine text anchor based on position (left or right side of the pie)
+    const textAnchor = x > cx ? 'start' : 'end';
+    
+    return (
+      <g>
+        {/* Arrow line */}
+        <line 
+          x1={arrowStartX} 
+          y1={arrowStartY} 
+          x2={arrowEndX} 
+          y2={arrowEndY} 
+          stroke={data[index].color} 
+          strokeWidth={1.5} 
+        />
+        
+        {/* Percentage text */}
+        <text 
+          x={x} 
+          y={y} 
+          fill={data[index].color}
+          textAnchor={textAnchor}
+          dominantBaseline="middle"
+          fontSize="12"
+          fontWeight="bold"
+        >
+          {`${percentage}%`}
+        </text>
+      </g>
+    );
+  };
+
+
   // Chart renderer - only pie chart
   const renderChart = () => {
     // For chart, we need to flatten the data - only showing main categories
@@ -98,6 +158,8 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
             animationDuration={1500}
             stroke="white"
             strokeWidth={3}
+            labelLine={false}
+            label={renderCustomizedLabel}
           >
             {chartData.map((entry, index) => (
               <Cell 
@@ -145,12 +207,6 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
 
         {/* Distribution Analysis */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h4 className="text-lg font-semibold text-gray-800">Distribution Analysis</h4>
-            <div className="text-sm text-gray-500">
-              {validData.length} categories • Total: {formatCurrency(totalValue, 0, 0)}
-            </div>
-          </div>
           <div className="h-80 bg-gradient-to-br from-gray-50 to-white rounded-xl border border-gray-200 p-4">
             {renderChart()}
           </div>
@@ -160,7 +216,6 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
         <div className="space-y-4 pt-4 border-t border-gray-200">
           {validData.map((item, index) => {
             const percentage = totalValue > 0 ? ((item.value / totalValue) * 100).toFixed(1) : '0.0';
-            const hasSubcategories = item.subCategories && item.subCategories.length > 0;
             const isCurrentMonth = item.name === 'Total Current Month';
             
             return (
@@ -171,12 +226,7 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
                       <h3 className="font-medium text-gray-800">{item.name}</h3>
-                      {isCurrentMonth && (
-                        <span className="ml-1 text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">
-                          With Sub Categories
-                        </span>
-                      )}
-                    </div>
+                  </div>
                     <div className="text-right">
                       <p className="font-bold text-lg text-gray-900">{formatCurrency(item.value, 0, 0)}</p>
                       <p className="text-xs text-gray-500">{item.numOfAcc.toLocaleString()} accounts • {percentage}% of total</p>
@@ -186,52 +236,20 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
                   {/* Breakdown summary for Current Month */}
                   {isCurrentMonth && item.subCategories && (
                     <div className="mt-3 flex items-center gap-4 text-xs">
-                      <div className="text-blue-700">SubCategories:</div>
                       {item.subCategories.map((sub, i) => {
                         const subPercentage = ((sub.value / item.value) * 100).toFixed(0);
                         return (
                           <div key={i} className="flex items-center gap-1">
                             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sub.color }}></div>
                             <span>{sub.name}: {subPercentage}%</span>
+                            <span className="text-gray-500">({formatCurrency(sub.value, 0, 0)})</span>
+                            <span className="text-gray-400">({sub.numOfAcc.toLocaleString()} accounts)</span>
                           </div>
                         );
                       })}
                     </div>
                   )}
                 </div>
-                
-                {/* Subcategories in a clean table format */}
-                {hasSubcategories && item.subCategories && (
-                  <div className="bg-white">
-                    {item.subCategories.map((subItem, subIndex) => {
-                      const subPercentage = item.value > 0 ? ((subItem.value / item.value) * 100).toFixed(1) : '0.0';
-                      return (
-                        <div key={`sub-${index}-${subIndex}`} 
-                            className={`border-t border-gray-100 p-4 ${subIndex === 0 ? 'border-t-0' : ''}`}>
-                          <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-2">
-                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: subItem.color }}></div>
-                              <div>
-                                <div className="font-medium text-gray-700">{subItem.name}</div>
-                                <div className="text-xs text-gray-500">{subItem.numOfAcc.toLocaleString()} accounts</div>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <div className="font-bold text-gray-900">{formatCurrency(subItem.value, 0, 0)}</div>
-                              <div className="text-xs text-blue-600">{subPercentage}% of {item.name}</div>
-                            </div>
-                          </div>
-                          <div className="w-full bg-gray-100 rounded-full h-1.5 mt-2">
-                            <div 
-                              className="h-1.5 rounded-full" 
-                              style={{ width: `${subPercentage}%`, backgroundColor: subItem.color }}
-                            ></div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
               </div>
             );
           })}

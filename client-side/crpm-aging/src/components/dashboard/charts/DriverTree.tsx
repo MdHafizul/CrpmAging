@@ -48,9 +48,10 @@ const DriverTree: React.FC<DriverTreeProps> = ({ driverTreeData }) => {
     return driverTreeData;
   }, [driverTreeData]);
 
-  // Enhanced horizontal driver tree structure with Active/Inactive -> Government/Non-Government
+  // Create the driver tree structure with Active/Inactive -> Government/Non-Government hierarchy
   const driverTreeStructure = useMemo(() => {
     const totalDebt = processedDriverData.reduce((sum, item) => sum + item.debtAmount, 0);
+    const totalAccounts = processedDriverData.reduce((sum, item) => sum + item.numOfAcc, 0);
     
     // Group by status first (Active/Inactive)
     const activeData = processedDriverData.filter(item => item.status === 'active');
@@ -59,17 +60,25 @@ const DriverTree: React.FC<DriverTreeProps> = ({ driverTreeData }) => {
     const activeTotal = activeData.reduce((sum, item) => sum + item.debtAmount, 0);
     const inactiveTotal = inactiveData.reduce((sum, item) => sum + item.debtAmount, 0);
     
+    // Calculate accounts for active and inactive
+    const activeTotalAccounts = activeData.reduce((sum, item) => sum + item.numOfAcc, 0);
+    const inactiveTotalAccounts = inactiveData.reduce((sum, item) => sum + item.numOfAcc, 0);
+    
     // Create structure for each status
-    const createStatusBranch = (data: any[], statusName: string, statusTotal: number) => {
+    const createStatusBranch = (data: any[], statusName: string, statusTotal: number, statusTotalAccounts: number) => {
       const governmentData = data.filter(item => item.type === 'government');
       const nonGovernmentData = data.filter(item => item.type === 'non-government');
       
       const governmentTotal = governmentData.reduce((sum, item) => sum + item.debtAmount, 0);
       const nonGovernmentTotal = nonGovernmentData.reduce((sum, item) => sum + item.debtAmount, 0);
       
+      const governmentTotalAccounts = governmentData.reduce((sum, item) => sum + item.numOfAcc, 0);
+      const nonGovernmentTotalAccounts = nonGovernmentData.reduce((sum, item) => sum + item.numOfAcc, 0);
+      
       return {
         name: statusName,
         value: statusTotal,
+        numOfAcc: statusTotalAccounts, // Add account numbers
         color: statusName === 'Active' ? '#059669' : '#dc2626',
         level: 1,
         percentage: ((statusTotal / totalDebt) * 100).toFixed(1),
@@ -77,6 +86,7 @@ const DriverTree: React.FC<DriverTreeProps> = ({ driverTreeData }) => {
           {
             name: 'Government',
             value: governmentTotal,
+            numOfAcc: governmentTotalAccounts, // Add account numbers
             color: '#3b82f6',
             level: 2,
             percentage: statusTotal > 0 ? ((governmentTotal / statusTotal) * 100).toFixed(1) : '0',
@@ -92,6 +102,7 @@ const DriverTree: React.FC<DriverTreeProps> = ({ driverTreeData }) => {
           {
             name: 'Non-Government',
             value: nonGovernmentTotal,
+            numOfAcc: nonGovernmentTotalAccounts, // Add account numbers
             color: '#ec4899',
             level: 2,
             percentage: statusTotal > 0 ? ((nonGovernmentTotal / statusTotal) * 100).toFixed(1) : '0',
@@ -112,12 +123,13 @@ const DriverTree: React.FC<DriverTreeProps> = ({ driverTreeData }) => {
       root: {
         name: 'Total Aged Debt',
         value: totalDebt,
+        numOfAcc: totalAccounts, // Add account numbers to root
         color: '#1f2937',
         level: 0
       },
       branches: [
-        createStatusBranch(activeData, 'Active', activeTotal),
-        createStatusBranch(inactiveData, 'Inactive', inactiveTotal)
+        createStatusBranch(activeData, 'Active', activeTotal, activeTotalAccounts),
+        createStatusBranch(inactiveData, 'Inactive', inactiveTotal, inactiveTotalAccounts)
       ]
     };
   }, [processedDriverData]);
@@ -282,17 +294,44 @@ const DriverTree: React.FC<DriverTreeProps> = ({ driverTreeData }) => {
           {node.name}
         </text>
         
-        {/* Node value */}
-        <text
-          x={x}
-          y={y}
-          textAnchor="middle"
-          fill={isSelected ? 'white' : '#374151'}
-          fontSize={level === 0 ? 14 : level === 1 ? 12 : level === 2 ? 10 : 9}
-          fontWeight="600"
-        >
-          {formatCurrency(node.value, 0, 0)}
-        </text>
+       <text
+  x={x}
+  y={y}
+  textAnchor="middle"
+  fill={isSelected ? 'white' : '#374151'}
+  fontSize={level === 0 ? 14 : level === 1 ? 12 : level === 2 ? 10 : 9}
+  fontWeight="600"
+>
+  {formatCurrency(node.value, 0, 0)}
+</text>
+
+{/* Account numbers for all levels */}
+{node.numOfAcc !== undefined && (
+  <text
+    x={x}
+    y={y + (level === 3 ? 12 : 15)}
+    textAnchor="middle"
+    fill={isSelected ? 'white' : '#6b7280'}
+    fontSize={level === 0 ? 10 : level === 1 ? 9 : 8}
+    fontWeight="medium"
+  >
+    {node.numOfAcc.toLocaleString()} accounts
+  </text>
+)}
+
+{/* Percentage only for non-root nodes */}
+{level > 0 && (
+  <text
+    x={x}
+    y={y + (level === 3 ? 22 : nodeHeight/3)}
+    textAnchor="middle"
+    fill={isSelected ? 'white' : node.color}
+    fontSize={level === 1 ? 11 : 10}
+    fontWeight="bold"
+  >
+    {node.percentage}%
+  </text>
+)}
         
         {/* Additional info for leaf nodes */}
         {level === 3 && (

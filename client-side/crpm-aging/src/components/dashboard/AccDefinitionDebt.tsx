@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import Card from '../ui/Card';
 import Table from '../ui/Table';
+import type { view } from 'framer-motion/client';
 
 interface AccDefinitionDebtData {
   businessArea: string;
@@ -8,16 +9,30 @@ interface AccDefinitionDebtData {
   numOfAccounts: number;
   debtAmount: number;
   accDefinition?: string;
+  // Additional fields for Trade Receivable view
+  totalUndue?: number;
+  curMthUnpaid?: number;
+  ttlOsAmt?: number;
+  totalUnpaid?: number;
+}
+
+interface TableRow extends AccDefinitionDebtData {
+  isFirstInGroup?: boolean;
+  isTotal?: boolean; 
+  isGrandTotal?: boolean;
 }
 
 interface AccDefinitionDebtProps {
   data: AccDefinitionDebtData[];
   loading?: boolean;
+  viewType: 'tradeReceivable' | 'agedDebt';
+  onViewTypeChange: (viewType: 'tradeReceivable' | 'agedDebt') => void;
 }
 
 export const AccDefinitionDebt: React.FC<AccDefinitionDebtProps> = ({
   data,
-  loading = false
+  loading = false,
+  viewType = 'agedDebt',
 }) => {
   // Local state for expanded data
   const [expandedData, setExpandedData] = useState<AccDefinitionDebtData[]>([]);
@@ -87,45 +102,84 @@ export const AccDefinitionDebt: React.FC<AccDefinitionDebtProps> = ({
       groupedByBusinessArea.get(key)!.push(item);
     });
     
-    // Flatten the data with proper formatting for display
-    const result: (AccDefinitionDebtData & { isFirstInGroup?: boolean, isTotal?: boolean, isGrandTotal?: boolean })[] = [];
-    
     // Track totals for grand total calculation
-    let grandTotalAccounts = 0;
     let grandTotalDebt = 0;
+    let grandTotalAccounts = 0;
+    let grandTotalTtlOsAmt = 0;
     
-    groupedByBusinessArea.forEach((items) => {
-      // Sort ADID types in alphabetical order
-      const sortedItems = [...items].sort((a, b) => {
-        return (a.accDefinition || '').localeCompare(b.accDefinition || '');
+    expandedData.forEach(item => {
+      grandTotalDebt += item.debtAmount;
+      grandTotalAccounts += item.numOfAccounts;
+      grandTotalTtlOsAmt += (item.ttlOsAmt || 0);
+    });
+    
+    // Calculate business area totals and percentages for sorting
+    const businessAreaTotals = Array.from(groupedByBusinessArea.entries()).map(([key, items]) => {
+      const totalDebt = items.reduce((sum, item) => sum + item.debtAmount, 0);
+      const totalTtlOsAmt = items.reduce((sum, item) => sum + (item.ttlOsAmt || 0), 0);
+      
+      const totalValue = viewType === 'tradeReceivable' ? totalTtlOsAmt : totalDebt;
+      const grandTotal = viewType === 'tradeReceivable' ? grandTotalTtlOsAmt : grandTotalDebt;
+      
+      const percentage = grandTotal > 0 ? (totalValue / grandTotal) * 100 : 0;
+      
+      return {
+        businessArea: key,
+        percentage,
+        items
+      };
+    });
+    
+    // Sort business areas by total percentage (descending)
+    const sortedBusinessAreas = businessAreaTotals.sort((a, b) => b.percentage - a.percentage);
+    
+    // Flatten the data with proper formatting for display
+    const result: (AccDefinitionDebtData & { 
+      isFirstInGroup?: boolean, 
+      isTotal?: boolean, 
+      isGrandTotal?: boolean,
+      percentage?: number 
+    })[] = [];
+    
+    // Process each business area in sorted order
+    sortedBusinessAreas.forEach(({ items }) => {
+      // Calculate percentages for each item
+      const itemsWithPercentage = items.map(item => {
+        const itemValue = viewType === 'tradeReceivable' ? (item.ttlOsAmt || 0) : item.debtAmount;
+        const grandTotal = viewType === 'tradeReceivable' ? grandTotalTtlOsAmt : grandTotalDebt;
+        return {
+          ...item,
+          percentage: grandTotal > 0 ? (itemValue / grandTotal) * 100 : 0
+        };
       });
       
+      // Sort by percentage in descending order
+      const sortedByPercentage = [...itemsWithPercentage].sort((a, b) => b.percentage! - a.percentage!);
+      
       // Add first item with business area info
-      if (sortedItems.length > 0) {
-        const firstItem = { ...sortedItems[0], isFirstInGroup: true };
+      if (sortedByPercentage.length > 0) {
+        const firstItem = { ...sortedByPercentage[0], isFirstInGroup: true };
         result.push(firstItem);
         
         // Add remaining items without business area info
-        for (let i = 1; i < sortedItems.length; i++) {
-          result.push(sortedItems[i]);
+        for (let i = 1; i < sortedByPercentage.length; i++) {
+          result.push(sortedByPercentage[i]);
         }
         
         // Calculate business area total
-        const totalAccounts = sortedItems.reduce((sum, item) => sum + item.numOfAccounts, 0);
-        const totalDebt = sortedItems.reduce((sum, item) => sum + item.debtAmount, 0);
-        
-        // Add to grand total
-        grandTotalAccounts += totalAccounts;
-        grandTotalDebt += totalDebt;
+        const totalAccounts = sortedByPercentage.reduce((sum, item) => sum + item.numOfAccounts, 0);
+        const totalDebt = sortedByPercentage.reduce((sum, item) => sum + item.debtAmount, 0);
+        const businessAreaPercentage = grandTotalDebt > 0 ? (totalDebt / grandTotalDebt) * 100 : 0;
         
         // Add business area total row
         result.push({
-          businessArea: sortedItems[0].businessArea,
-          station: sortedItems[0].station,
+          businessArea: sortedByPercentage[0].businessArea,
+          station: sortedByPercentage[0].station,
           numOfAccounts: totalAccounts,
           debtAmount: totalDebt,
           accDefinition: 'Total',
-          isTotal: true
+          isTotal: true,
+          percentage: businessAreaPercentage
         });
       }
     });
@@ -138,12 +192,13 @@ export const AccDefinitionDebt: React.FC<AccDefinitionDebtProps> = ({
         numOfAccounts: grandTotalAccounts,
         debtAmount: grandTotalDebt,
         accDefinition: 'ADID',
-        isGrandTotal: true
+        isGrandTotal: true,
+        percentage: 100 // Always 100%
       });
     }
     
     return result;
-  }, [expandedData]);
+  }, [expandedData, viewType]);
 
   // Calculate summary totals for each business area
   const businessAreaSummary = useMemo(() => {
@@ -170,7 +225,7 @@ export const AccDefinitionDebt: React.FC<AccDefinitionDebtProps> = ({
     return Array.from(summary.values());
   }, [expandedData]);
 
-  const columns = [
+  const baseColumns = [
     { 
       header: 'Business Area', 
       accessor: 'businessArea',
@@ -237,16 +292,93 @@ export const AccDefinitionDebt: React.FC<AccDefinitionDebtProps> = ({
         </span>
       )
     },
+  ];
+
+   // Aged Debt view columns - with totals row styling
+  const agedDebtColumns = [
     { 
-      header: 'TTL O/S AMT', 
+      header: 'TTL O/S Amt', 
       accessor: 'debtAmount',
-      cell: (value: number, row: any) => (
-        <span className={`font-medium ${row.isTotal ? 'font-bold text-blue-600' : 'text-gray-900'} ${row.isGrandTotal ? 'font-bold text-lg text-blue-600' : ''}`}>
+      align: 'right' as const,
+      cell: (value: number, row: TableRow) => (
+        <span className={`${row.isGrandTotal || row.isTotal ? 'font-bold text-blue-600' : 'font-bold text-gray-900'} ${row.isGrandTotal ? 'text-lg' : ''}`}>
           RM {value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </span>
+      )
+    },
+    { 
+      header: '% of Total', 
+      accessor: 'percentage',
+      align: 'right' as const,
+      cell: (value: number, row: TableRow) => (
+        <span className={`${row.isGrandTotal || row.isTotal ? 'font-bold text-blue-600' : 'font-medium text-gray-900'} ${row.isGrandTotal ? 'text-lg' : ''}`}>
+          {value?.toFixed(2)}%
         </span>
       )
     }
   ];
+
+    // Additional columns for Trade Receivable view - with totals row styling
+  const tradeReceivableColumns = [
+    { 
+      header: 'Total Undue', 
+      accessor: 'totalUndue',
+      align: 'right' as const,
+      cell: (value: number, row: TableRow) => (
+        <span className={`font-medium ${row.isGrandTotal || row.isTotal ? 'text-blue-600 font-bold' : 'text-blue-600'} ${row.isGrandTotal ? 'text-lg' : ''}`}>
+          RM {value?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+        </span>
+      )
+    },
+    { 
+      header: 'Cur.Mth Unpaid', 
+      accessor: 'curMthUnpaid',
+      align: 'right' as const,
+      cell: (value: number, row: TableRow) => (
+        <span className={`font-medium ${row.isGrandTotal || row.isTotal ? 'text-blue-600 font-bold' : 'text-orange-600'} ${row.isGrandTotal ? 'text-lg' : ''}`}>
+          RM {value?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+        </span>
+      )
+    },
+    { 
+      header: 'TTL O/S Amt', 
+      accessor: 'ttlOsAmt',
+      align: 'right' as const,
+      cell: (value: number, row: TableRow) => (
+        <span className={`${row.isGrandTotal || row.isTotal ? 'font-bold text-blue-600' : 'font-bold text-red-600'} ${row.isGrandTotal ? 'text-lg' : ''}`}>
+          RM {value?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+        </span>
+      )
+    },
+    { 
+      header: '% of Total', 
+      accessor: 'percentage',
+      align: 'right' as const,
+      cell: (value: number, row: TableRow) => (
+        <span className={`${row.isGrandTotal || row.isTotal ? 'font-bold text-blue-600' : 'font-medium text-gray-900'} ${row.isGrandTotal ? 'text-lg' : ''}`}>
+          {value?.toFixed(2)}%
+        </span>
+      )
+    },
+    { 
+      header: 'Total Unpaid', 
+      accessor: 'totalUnpaid',
+      align: 'right' as const,
+      cell: (value: number, row: TableRow) => (
+        <span className={`${row.isGrandTotal || row.isTotal ? 'font-bold text-blue-600' : 'font-bold text-gray-900'} ${row.isGrandTotal ? 'text-lg' : ''}`}>
+          RM {value?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+        </span>
+      )
+    }
+  ];
+
+
+  
+  // Combine columns based on view type, just like in DebtByStationTable.tsx
+  const columns = viewType === 'tradeReceivable' 
+    ? [...baseColumns, ...tradeReceivableColumns]
+    : [...baseColumns, ...agedDebtColumns];
+
     
   // Header right with data summary
   const headerRight = (
